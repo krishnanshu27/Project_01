@@ -1,66 +1,55 @@
 "use client";
-import { useState, useRef, useCallback, useEffect } from "react";
-import { useMotionValue } from "framer-motion";
+import { useState as useLocalState, useRef as useLocalRef, useCallback as useLocalCallback, useEffect as useLocalEffect } from "react";
+import { useMotionValue as useLocalMotionValue } from "framer-motion";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button as UIButton } from "@/components/ui/button";
+import { cn as classNames } from "@/lib/utils";
+
 import {
-    ResponsiveContainer,
-    RadarChart,
-    PolarGrid,
-    PolarAngleAxis,
-    PolarRadiusAxis,
-    Radar,
-} from 'recharts';
-import { 
-    Activity, Brain, Heart, Moon, Sun, Plug, PlugZap, Zap, Clock, Target,
-    Signal, TrendingUp, ActivitySquare, Gauge, BarChart3, Waves
+    Activity as ActivityIcon, Brain as BrainIcon, Heart as HeartIcon, Moon as MoonIcon, Sun as SunIcon, Plug as PlugIcon, PlugZap as PlugZapIcon, Zap as ZapIcon, Clock as ClockIcon, Target as TargetIcon,
+    Signal as SignalIcon, TrendingUp as TrendingUpIcon, ActivitySquare as ActivitySquareIcon, Gauge as GaugeIcon, BarChart3 as BarChartIcon, BarChart3, Waves, Brain, Heart, Activity, Clock, Target, Zap
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card as UICard, CardContent as UICardContent, CardDescription as UICardDescription, CardHeader as UICardHeader, CardTitle as UICardTitle } from '@/components/ui/card';
+import { Dialog as UIDialog, DialogContent as UIDialogContent, DialogHeader as UIDialogHeader, DialogTitle as UIDialogTitle, DialogTrigger as UIDialogTrigger } from '@/components/ui/dialog';
+import { Badge as UIBadge } from '@/components/ui/badge';
+import { Progress as UIProgress } from '@/components/ui/progress';
+import { Separator as UISeparator } from '@/components/ui/separator';
+import { ScrollArea as UIScrollArea } from '@/components/ui/scroll-area';
+import { Tabs as UITabs, TabsContent as UITabsContent, TabsList as UITabsList, TabsTrigger as UITabsTrigger } from '@/components/ui/tabs';
+import { Alert as UIAlert, AlertDescription as UIAlertDescription } from '@/components/ui/alert';
 
-import { useBleStream } from '../components/Bledata';
+import { useBleStream as useBluetoothStream } from '../components/Bledata';
 import WebglPlotCanvas from '../components/WebglPlotCanvas';
-import Contributors from './Contributors';
-import { WebglPlotCanvasHandle } from "../components/WebglPlotCanvas";
-import HRVPlotCanvas, { HRVPlotCanvasHandle } from '@/components/Hrvwebglplot'
-import { StateIndicator, State } from "@/components/StateIndicator";
+
+import { WebglPlotCanvasHandle as PlotCanvasHandle } from "../components/WebglPlotCanvas";
+import HRVPlotCanvas, { HRVPlotCanvasHandle as HRVCanvasHandle } from '@/components/Hrvwebglplot'
+import { StateIndicator as MentalStateIndicator, State as MentalState } from "@/components/StateIndicator";
 import MeditationWaveform from "../components/MeditationWaveform";
-import { predictState } from "@/lib/stateClassifier";
-import { useRouter } from 'next/navigation';
-import { MeditationSession } from '../components/MeditationSession';
-import QuoteCard from './QuoteCard';
-import Link from "next/link";
+import { predictState as predictMentalState } from "@/lib/stateClassifier";
+import { useRouter as useLocalRouter } from 'next/navigation';
+import { MeditationSession as MindSession } from '../components/MeditationSession';
+import MotivationalQuoteCard from './QuoteCard';
+import UILink from "next/link";
 
-const CHANNEL_COLORS: Record<string, string> = {
-    ch0: "#C29963",
-    ch1: "#63A2C2", 
-    ch2: "#E4967E",
-};
 
-export default function SignalVisualizer() {
-    const [darkMode, setDarkMode] = useState(false);
-    const canvaseeg1Ref = useRef<WebglPlotCanvasHandle>(null);
-    const canvaseeg2Ref = useRef<WebglPlotCanvasHandle>(null);
-    const canvasecgRef = useRef<WebglPlotCanvasHandle>(null);
-    const buf0Ref = useRef<number[]>([]);
-    const buf1Ref = useRef<number[]>([]);
-    const radarDataCh0Ref = useRef<{ subject: string; value: number }[]>([]);
-    const radarDataCh1Ref = useRef<{ subject: string; value: number }[]>([]);
-    const workerRef = useRef<Worker | null>(null);
-    const dataProcessorWorkerRef = useRef<Worker | null>(null);
-    const [isBeating, setIsBeating] = useState(false);
-    const [displayState, setDisplayState] = useState<State>("no_data");
-    const stateWindowRef = useRef<{ state: State; timestamp: number }[]>([]);
-    const lastStateUpdateRef = useRef<number>(0);
-    const connectionStartRef = useRef<number | null>(null);
-    const [sessionResults, setSessionResults] = useState<{
+
+export default function BrainSignalVisualizer() {
+    const [isDarkMode, setIsDarkMode] = useLocalState(false);
+    const eeg1CanvasRef = useLocalRef<PlotCanvasHandle>(null);
+    const eeg2CanvasRef = useLocalRef<PlotCanvasHandle>(null);
+    const ecgCanvasRef = useLocalRef<PlotCanvasHandle>(null);
+    const eeg0BufferRef = useLocalRef<number[]>([]);
+    const eeg1BufferRef = useLocalRef<number[]>([]);
+    const radarCh0DataRef = useLocalRef<{ subject: string; value: number }[]>([]);
+    const radarCh1DataRef = useLocalRef<{ subject: string; value: number }[]>([]);
+    const bandWorkerRef = useLocalRef<Worker | null>(null);
+    const dataWorkerRef = useLocalRef<Worker | null>(null);
+    const [heartbeatActive, setHeartbeatActive] = useLocalState(false);
+    const [currentMentalState, setCurrentMentalState] = useLocalState<MentalState>("no_data");
+    const stateHistoryRef = useLocalRef<{ state: MentalState; timestamp: number }[]>([]);
+    const lastMentalStateUpdateRef = useLocalRef<number>(0);
+    const connectionStartTimeRef = useLocalRef<number | null>(null);
+    const [sessionSummary, setSessionSummary] = useLocalState<{
         duration: number;
         averages: {
             alpha: number;
@@ -83,47 +72,48 @@ export default function SignalVisualizer() {
         goodMeditationPct: string;
         weightedEEGScore: number;
     } | null>(null);
-    const currentRef = useRef<HTMLDivElement>(null);
-    const highRef = useRef<HTMLDivElement>(null);
-    const lowRef = useRef<HTMLDivElement>(null);
-    const avgRef = useRef<HTMLDivElement>(null);
-    const bpmWorkerRef = useRef<Worker | null>(null);
-    const previousCounterRef = useRef<number | null>(null);
-    const hrvRef = useRef<HTMLDivElement>(null);
-    const hrvHighRef = useRef<HTMLDivElement>(null);
-    const hrvLowRef = useRef<HTMLDivElement>(null);
-    const hrvAvgRef = useRef<HTMLDivElement>(null);
-    const [hrvData, setHrvData] = useState<{ time: number; hrv: number }[]>([]);
-    const hrvplotRef = useRef<HRVPlotCanvasHandle>(null);
-    const router = useRouter();
-    const leftMV = useMotionValue(0);
-    const rightMV = useMotionValue(0);
-    const ecgBufRef = useRef<number[]>([]);
-    const [viewMode, setViewMode] = useState<"radar" | "meditation">("radar");
-    const [selectedGoal, setSelectedGoal] = useState<"anxiety" | "meditation" | "sleep">("anxiety");
-    const [showResults, setShowResults] = useState(false);
-    const selectedGoalRef = useRef(selectedGoal);
-    const [calmScore, setCalmScore] = useState<number | null>(null);
-    const sessionDataRef = useRef<{ timestamp: number; alpha: number; beta: number; theta: number; delta: number, symmetry: number }[]>([]);
-    const isMeditatingRef = useRef(false);
-    const SAMPLE_RATE = 500;
-    const FFT_SIZE = 256;
-    const sampleCounterRef = useRef(0);
+    const bpmCurrentRef = useLocalRef<HTMLDivElement>(null);
+    const bpmHighRef = useLocalRef<HTMLDivElement>(null);
+    const bpmLowRef = useLocalRef<HTMLDivElement>(null);
+    const bpmAvgRef = useLocalRef<HTMLDivElement>(null);
+    const bpmWorkerRef = useLocalRef<Worker | null>(null);
+    const prevSampleCounterRef = useLocalRef<number | null>(null);
+    const hrvCurrentRef = useLocalRef<HTMLDivElement>(null);
+    const hrvHighRef = useLocalRef<HTMLDivElement>(null);
+    const hrvLowRef = useLocalRef<HTMLDivElement>(null);
+    const hrvAvgRef = useLocalRef<HTMLDivElement>(null);
+    const [hrvHistory, setHrvHistory] = useLocalState<{ time: number; hrv: number }[]>([]);
+    const hrvCanvasRef = useLocalRef<HRVCanvasHandle>(null);
+    const router = useLocalRouter();
+    const leftBetaMV = useLocalMotionValue(0);
+    const rightBetaMV = useLocalMotionValue(0);
+    const ecgBufferRef = useLocalRef<number[]>([]);
+    const [dashboardMode, setDashboardMode] = useLocalState<"radar" | "meditation">("radar");
+    const [goalSelected, setGoalSelected] = useLocalState<"anxiety" | "meditation" | "sleep">("anxiety");
+    const [resultsVisible, setResultsVisible] = useLocalState(false);
+    const goalSelectedRef = useLocalRef(goalSelected);
+    const [relaxScore, setRelaxScore] = useLocalState<number | null>(null);
+    const sessionDataRef = useLocalRef<{ timestamp: number; alpha: number; beta: number; theta: number; delta: number, symmetry: number }[]>([]);
+    const isSessionActiveRef = useLocalRef(false);
+    const isMeditatingRef = useLocalRef(false);
+    const SAMPLES_PER_SECOND = 500;
+    const FFT_WINDOW_SIZE = 256;
+    const sampleIndexRef = useLocalRef(0);
 
-    useEffect(() => {
-        selectedGoalRef.current = selectedGoal;
-    }, [selectedGoal]);
+    useLocalEffect(() => {
+        goalSelectedRef.current = goalSelected;
+    }, [goalSelected]);
 
-    useEffect(() => {
+    useLocalEffect(() => {
         const interval = setInterval(() => {
-            setIsBeating(true);
-            setTimeout(() => setIsBeating(false), 200);
+            setHeartbeatActive(true);
+            setTimeout(() => setHeartbeatActive(false), 200);
         }, 1000);
         return () => clearInterval(interval);
     }, []);
 
-    const datastream = useCallback((data: number[]) => {
-        dataProcessorWorkerRef.current?.postMessage({
+    const handleDataStream = useLocalCallback((data: number[]) => {
+        dataWorkerRef.current?.postMessage({
             command: "process",
             rawData: {
                 counter: data[0],
@@ -134,15 +124,15 @@ export default function SignalVisualizer() {
         });
     }, []);
 
-    const { connected, connect, disconnect } = useBleStream(datastream);
+    const { connected: isDeviceConnected, connect: connectDevice, disconnect: disconnectDevice } = useBluetoothStream(handleDataStream);
 
-    const channelColors: Record<string, string> = {
+    const channelPalette: Record<string, string> = {
         ch0: "#C29963",
         ch1: "#548687",
         ch2: "#9A7197",
     };
 
-    const bandData = [
+    const brainBands = [
         { subject: "Delta", value: 0 },
         { subject: "Theta", value: 0 },
         { subject: "Alpha", value: 0 },
@@ -150,7 +140,7 @@ export default function SignalVisualizer() {
         { subject: "Gamma", value: 0 },
     ];
 
-    useEffect(() => {
+    useLocalEffect(() => {
         const worker = new Worker(
             new URL("../webworker/dataProcessor.worker.ts", import.meta.url),
             { type: "module" }
@@ -158,17 +148,17 @@ export default function SignalVisualizer() {
         worker.onmessage = (e) => {
             if (e.data.type === "processedData") {
                 const { counter, eeg0, eeg1, ecg } = e.data.data;
-                canvaseeg1Ref.current?.updateData([counter, eeg0, 1]);
-                canvaseeg2Ref.current?.updateData([counter, eeg1, 2]);
-                canvasecgRef.current?.updateData([counter, ecg, 3]);
-                onNewSample(eeg0, eeg1);
+                eeg1CanvasRef.current?.updateData([counter, eeg0, 1]);
+                eeg2CanvasRef.current?.updateData([counter, eeg1, 2]);
+                ecgCanvasRef.current?.updateData([counter, ecg, 3]);
+                handleNewSample(eeg0, eeg1);
             }
         };
-        dataProcessorWorkerRef.current = worker;
+        dataWorkerRef.current = worker;
         return () => worker.terminate();
     }, []);
 
-    useEffect(() => {
+    useLocalEffect(() => {
         const w = new Worker(
             new URL("../webworker/bandPower.worker.ts", import.meta.url),
             { type: "module" }
@@ -181,23 +171,23 @@ export default function SignalVisualizer() {
             }>
         ) => {
             const { smooth0, smooth1 } = e.data;
-            leftMV.set(smooth0.beta);
-            rightMV.set(smooth1.beta);
+            leftBetaMV.set(smooth0.beta);
+            rightBetaMV.set(smooth1.beta);
 
             function capitalize(subject: string): string {
                 return subject.charAt(0).toUpperCase() + subject.slice(1);
             }
 
-            radarDataCh0Ref.current = Object.entries(smooth0).map(
+            radarCh0DataRef.current = Object.entries(smooth0).map(
                 ([subject, value]) => ({ subject: capitalize(subject), value })
             );
 
-            radarDataCh1Ref.current = Object.entries(smooth1).map(
+            radarCh1DataRef.current = Object.entries(smooth1).map(
                 ([subject, value]) => ({ subject: capitalize(subject), value })
             );
 
             let score = 0;
-            const goal = selectedGoalRef.current;
+            const goal = goalSelectedRef.current;
 
             if (goal === "anxiety") {
                 score = (Number(smooth0.alpha) + Number(smooth1.alpha)) / (Number(smooth0.beta) + Number(smooth1.beta) + 0.001);
@@ -216,53 +206,53 @@ export default function SignalVisualizer() {
                 symmetry: Math.abs(smooth0.alpha - smooth1.alpha),
             };
 
-            if (isMeditatingRef.current) {
+            if (isSessionActiveRef.current) {
                 sessionDataRef.current.push(currentData);
             }
 
-            setCalmScore(score);
+            setRelaxScore(score);
         };
 
-        workerRef.current = w;
+        bandWorkerRef.current = w;
         return () => {
             w.terminate();
         };
     }, []);
 
-    const onNewSample = useCallback((eeg0: number, eeg1: number) => {
-        buf0Ref.current.push(eeg0);
-        buf1Ref.current.push(eeg1);
-        sampleCounterRef.current++;
+    const handleNewSample = useLocalCallback((eeg0: number, eeg1: number) => {
+        eeg0BufferRef.current.push(eeg0);
+        eeg1BufferRef.current.push(eeg1);
+        sampleIndexRef.current++;
 
-        if (buf0Ref.current.length > FFT_SIZE) {
-            buf0Ref.current.shift();
-            buf1Ref.current.shift();
+        if (eeg0BufferRef.current.length > FFT_WINDOW_SIZE) {
+            eeg0BufferRef.current.shift();
+            eeg1BufferRef.current.shift();
         }
 
-        if (sampleCounterRef.current % 10 === 0 && buf0Ref.current.length === FFT_SIZE) {
-            workerRef.current?.postMessage({
-                eeg0: [...buf0Ref.current],
-                eeg1: [...buf1Ref.current],
-                sampleRate: SAMPLE_RATE,
-                fftSize: FFT_SIZE,
+        if (sampleIndexRef.current % 10 === 0 && eeg0BufferRef.current.length === FFT_WINDOW_SIZE) {
+            bandWorkerRef.current?.postMessage({
+                eeg0: [...eeg0BufferRef.current],
+                eeg1: [...eeg1BufferRef.current],
+                sampleRate: SAMPLES_PER_SECOND,
+                fftSize: FFT_WINDOW_SIZE,
             });
         }
     }, []);
 
-    const onNewECG = useCallback((ecg: number) => {
-        ecgBufRef.current.push(ecg);
-        if (ecgBufRef.current.length > 2500) {
-            ecgBufRef.current.shift();
+    const handleNewECG = useLocalCallback((ecg: number) => {
+        ecgBufferRef.current.push(ecg);
+        if (ecgBufferRef.current.length > 2500) {
+            ecgBufferRef.current.shift();
         }
-        if (ecgBufRef.current.length % 500 === 0) {
+        if (ecgBufferRef.current.length % 500 === 0) {
             bpmWorkerRef.current?.postMessage({
-                ecgBuffer: [...ecgBufRef.current],
+                ecgBuffer: [...ecgBufferRef.current],
                 sampleRate: 500,
             });
         }
     }, []);
 
-    useEffect(() => {
+    useLocalEffect(() => {
         const worker = new Worker(
             new URL("../webworker/bpm.worker.ts", import.meta.url),
             { type: "module" }
@@ -292,7 +282,7 @@ export default function SignalVisualizer() {
             const { bpm, high, low, avg, hrv, hrvHigh, hrvLow, hrvAvg, sdnn, rmssd, pnn50 } = e.data;
 
             if (hrv !== null && !isNaN(hrv)) {
-                hrvplotRef.current?.updateHRV(hrv);
+                hrvCanvasRef.current?.updateHRV(hrv);
             }
 
             if (bpm !== null) {
@@ -304,59 +294,59 @@ export default function SignalVisualizer() {
                     const diff = avgBPM - displayedBPM;
                     displayedBPM += Math.sign(diff) * Math.min(Math.abs(diff), maxChange);
                 }
-                if (currentRef.current) currentRef.current.textContent = `${Math.round(displayedBPM)}`;
+                if (bpmCurrentRef.current) bpmCurrentRef.current.textContent = `${Math.round(displayedBPM)}`;
             } else {
                 bpmWindow.length = 0;
                 displayedBPM = null;
-                if (currentRef.current) currentRef.current.textContent = "--";
+                if (bpmCurrentRef.current) bpmCurrentRef.current.textContent = "--";
             }
 
-            if (highRef.current) highRef.current.textContent = high !== null ? `${high}` : "--";
-            if (lowRef.current) lowRef.current.textContent = low !== null ? `${low}` : "--";
-            if (avgRef.current) avgRef.current.textContent = avg !== null ? `${avg}` : "--";
+            if (bpmHighRef.current) bpmHighRef.current.textContent = high !== null ? `${high}` : "--";
+            if (bpmLowRef.current) bpmLowRef.current.textContent = low !== null ? `${low}` : "--";
+            if (bpmAvgRef.current) bpmAvgRef.current.textContent = avg !== null ? `${avg}` : "--";
 
-            if (hrvRef.current) hrvRef.current.textContent = hrv !== null ? `${hrv}` : "--";
+            if (hrvCurrentRef.current) hrvCurrentRef.current.textContent = hrv !== null ? `${hrv}` : "--";
             if (hrvHighRef.current) hrvHighRef.current.textContent = hrvHigh !== null ? `${hrvHigh}` : "--";
             if (hrvLowRef.current) hrvLowRef.current.textContent = hrvLow !== null ? `${hrvLow}` : "--";
             if (hrvAvgRef.current) hrvAvgRef.current.textContent = hrvAvg !== null ? `${hrvAvg}` : "--";
 
-            const currentState = predictState({ sdnn, rmssd, pnn50 });
+            const detectedState = predictMentalState({ sdnn, rmssd, pnn50 });
             const now = Date.now();
 
-            if (connectionStartRef.current === null) {
-                connectionStartRef.current = now;
-                lastStateUpdateRef.current = now;
+            if (connectionStartTimeRef.current === null) {
+                connectionStartTimeRef.current = now;
+                lastMentalStateUpdateRef.current = now;
             }
 
-            stateWindowRef.current.push({
-                state: currentState,
+            stateHistoryRef.current.push({
+                state: detectedState,
                 timestamp: now
             });
 
             const STATE_UPDATE_INTERVAL = 5000;
             const fiveSecondsAgo = now - STATE_UPDATE_INTERVAL;
-            stateWindowRef.current = stateWindowRef.current.filter(
+            stateHistoryRef.current = stateHistoryRef.current.filter(
                 item => item.timestamp >= fiveSecondsAgo
             );
 
-            const timeSinceLastUpdate = now - lastStateUpdateRef.current;
-            const timeSinceConnection = now - connectionStartRef.current;
+            const timeSinceLastUpdate = now - lastMentalStateUpdateRef.current;
+            const timeSinceConnection = now - connectionStartTimeRef.current;
 
             if (timeSinceConnection < STATE_UPDATE_INTERVAL) {
-                setDisplayState("no_data");
+                setCurrentMentalState("no_data");
             } else if (timeSinceLastUpdate >= STATE_UPDATE_INTERVAL) {
-                if (stateWindowRef.current.length > 0) {
+                if (stateHistoryRef.current.length > 0) {
                     const stateCounts: Record<string, number> = {};
-                    stateWindowRef.current.forEach(item => {
+                    stateHistoryRef.current.forEach(item => {
                         stateCounts[item.state] = (stateCounts[item.state] || 0) + 1;
                     });
 
                     const dominantState = Object.entries(stateCounts).reduce((a, b) =>
                         a[1] > b[1] ? a : b
-                    )[0] as State;
+                    )[0] as MentalState;
 
-                    setDisplayState(dominantState);
-                    lastStateUpdateRef.current = now;
+                    setCurrentMentalState(dominantState);
+                    lastMentalStateUpdateRef.current = now;
                 }
             }
         };
@@ -367,38 +357,63 @@ export default function SignalVisualizer() {
         };
     }, []);
 
-    useEffect(() => {
-        isMeditatingRef.current = viewMode === "meditation";
-    }, [viewMode]);
+    useLocalEffect(() => {
+        isSessionActiveRef.current = dashboardMode === "meditation";
+    }, [dashboardMode]);
 
-    useEffect(() => {
-        if (connected) {
-            connectionStartRef.current = Date.now();
-            lastStateUpdateRef.current = Date.now();
-            stateWindowRef.current = [];
-            setDisplayState("no_data");
+    useLocalEffect(() => {
+        if (isDeviceConnected) {
+            connectionStartTimeRef.current = Date.now();
+            lastMentalStateUpdateRef.current = Date.now();
+            stateHistoryRef.current = [];
+            setCurrentMentalState("no_data");
         } else {
-            connectionStartRef.current = null;
-            lastStateUpdateRef.current = 0;
-            stateWindowRef.current = [];
-            setDisplayState("no_data");
+            connectionStartTimeRef.current = null;
+            lastMentalStateUpdateRef.current = 0;
+            stateHistoryRef.current = [];
+            setCurrentMentalState("no_data");
         }
-    }, [connected]);
+    }, [isDeviceConnected]);
 
-    useEffect(() => {
-        const dp = dataProcessorWorkerRef.current!;
+    useLocalEffect(() => {
+        const dp = dataWorkerRef.current!;
         const handler = (e: MessageEvent) => {
             if (e.data.type === "processedData") {
                 const { eeg0, eeg1, ecg } = e.data.data;
-                onNewSample(eeg0, eeg1);
-                onNewECG(ecg);
+                handleNewSample(eeg0, eeg1);
+                handleNewECG(ecg);
             }
         };
         dp.addEventListener("message", handler);
         return () => {
             dp.removeEventListener("message", handler);
         };
-    }, [onNewSample, onNewECG]);
+    }, [handleNewSample, handleNewECG]);
+
+    // Show/hide the session results dialog
+    function setShowResults(value: React.SetStateAction<boolean>): void {
+        setResultsVisible(value);
+    }
+
+    function setSessionResults(value: React.SetStateAction<{
+        duration: number;
+        averages: { alpha: number; beta: number; theta: number; delta: number; symmetry: number; };
+        mentalState: string;
+        stateDescription: string;
+        focusScore: string;
+        symmetry: string;
+        data: { timestamp: number; alpha: number; beta: number; theta: number; delta: number; symmetry: number; }[];
+        dominantBands: Record<string, number>;
+        mostFrequent: string;
+        convert: (ticks: number) => string;
+        avgSymmetry: string;
+        formattedDuration: string;
+        statePercentages: Record<string, string>;
+        goodMeditationPct: string;
+        weightedEEGScore: number;
+    } | null>): void {
+        setSessionSummary(value);
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -422,37 +437,35 @@ export default function SignalVisualizer() {
 
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2">
-                                <div className={cn(
+                                <div className={classNames(
                                     "h-2 w-2 rounded-full",
-                                    connected ? "bg-green-500 animate-pulse" : "bg-slate-400"
+                                    isDeviceConnected ? "bg-green-500 animate-pulse" : "bg-slate-400"
                                 )} />
                                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                                    {connected ? "Connected" : "Disconnected"}
+                                    {isDeviceConnected ? "Connected" : "Disconnected"}
                                 </span>
                             </div>
 
-                            {!connected ? (
-                                <Button onClick={connect} className="gap-2">
-                                    <Plug className="h-4 w-4" />
+                            {!isDeviceConnected ? (
+                                <UIButton onClick={connectDevice} className="gap-2">
+                                    <PlugIcon className="h-4 w-4" />
                                     Connect
-                                </Button>
+                                </UIButton>
                             ) : (
-                                <Button onClick={disconnect} variant="destructive" className="gap-2">
-                                    <PlugZap className="h-4 w-4" />
+                                <UIButton onClick={disconnectDevice} variant="destructive" className="gap-2">
+                                    <PlugZapIcon className="h-4 w-4" />
                                     Disconnect
-                                </Button>
+                                </UIButton>
                             )}
 
-                            <Button
-                                onClick={() => setDarkMode(!darkMode)}
+                            <UIButton
+                                onClick={() => setIsDarkMode(!isDarkMode)}
                                 variant="ghost"
                                 size="icon"
                                 className="rounded-lg"
                             >
-                                {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                            </Button>
-
-                            <Contributors darkMode={darkMode} />
+                                {isDarkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+                            </UIButton>
                         </div>
                     </div>
                 </div>
@@ -460,83 +473,81 @@ export default function SignalVisualizer() {
 
             {/* Main Content */}
             <main className="container mx-auto px-4 py-6 space-y-6">
-             
                 {/* Main Dashboard */}
-                <Tabs defaultValue="overview" className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="overview">Overview</TabsTrigger>
-                      
-                        <TabsTrigger value="meditation">Meditation</TabsTrigger>
-                    </TabsList>
+                <UITabs defaultValue="overview" className="space-y-6">
+                    <UITabsList className="grid w-full grid-cols-3">
+                        <UITabsTrigger value="overview">Overview</UITabsTrigger>
+                        <UITabsTrigger value="meditation">Meditation</UITabsTrigger>
+                    </UITabsList>
 
-                    <TabsContent value="overview" className="space-y-6">
+                    <UITabsContent value="overview" className="space-y-6">
                         {/* Status Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Connection</CardTitle>
-                                    <Activity className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
+                            <UICard>
+                                <UICardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <UICardTitle className="text-sm font-medium">Connection</UICardTitle>
+                                    <ActivityIcon className="h-4 w-4 text-muted-foreground" />
+                                </UICardHeader>
+                                <UICardContent>
                                     <div className="text-2xl font-bold">
-                                        {connected ? "Active" : "Inactive"}
+                                        {isDeviceConnected ? "Active" : "Inactive"}
                                     </div>
                                     <p className="text-xs text-muted-foreground">
                                         Device status
                                     </p>
-                                </CardContent>
-                            </Card>
+                                </UICardContent>
+                            </UICard>
 
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Heart Rate</CardTitle>
-                                    <Heart className={cn("h-4 w-4", isBeating ? "text-red-500 scale-125" : "text-muted-foreground")} />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold" ref={currentRef}>--</div>
+                            <UICard>
+                                <UICardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <UICardTitle className="text-sm font-medium">Heart Rate</UICardTitle>
+                                    <HeartIcon className={classNames("h-4 w-4", heartbeatActive ? "text-red-500 scale-125" : "text-muted-foreground")} />
+                                </UICardHeader>
+                                <UICardContent>
+                                    <div className="text-2xl font-bold" ref={bpmCurrentRef}>--</div>
                                     <p className="text-xs text-muted-foreground">bpm</p>
-                                </CardContent>
-                            </Card>
+                                </UICardContent>
+                            </UICard>
 
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">HRV</CardTitle>
-                                    <ActivitySquare className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold" ref={hrvRef}>--</div>
+                            <UICard>
+                                <UICardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <UICardTitle className="text-sm font-medium">HRV</UICardTitle>
+                                    <ActivitySquareIcon className="h-4 w-4 text-muted-foreground" />
+                                </UICardHeader>
+                                <UICardContent>
+                                    <div className="text-2xl font-bold" ref={hrvCurrentRef}>--</div>
                                     <p className="text-xs text-muted-foreground">ms</p>
-                                </CardContent>
-                            </Card>
+                                </UICardContent>
+                            </UICard>
 
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Mental State</CardTitle>
-                                    <Brain className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
+                            <UICard>
+                                <UICardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <UICardTitle className="text-sm font-medium">Mental State</UICardTitle>
+                                    <BrainIcon className="h-4 w-4 text-muted-foreground" />
+                                </UICardHeader>
+                                <UICardContent>
                                     <div className="text-2xl font-bold">
-                                        <StateIndicator state={displayState} />
+                                        <MentalStateIndicator state={currentMentalState} />
                                     </div>
                                     <p className="text-xs text-muted-foreground">
                                         Current state
                                     </p>
-                                </CardContent>
-                            </Card>
+                                </UICardContent>
+                            </UICard>
                         </div>
 
                         {/* Brain Activity Overview */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <BarChart3 className="h-3 w-5" />
+                        <UICard>
+                            <UICardHeader>
+                                <UICardTitle className="flex items-center gap-2">
+                                    <BarChartIcon className="h-3 w-5" />
                                     Brain Activity Overview
-                                </CardTitle>
-                                <CardDescription>
+                                </UICardTitle>
+                                <UICardDescription>
                                     Real-time brainwave analysis from both hemispheres
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
+                                </UICardDescription>
+                            </UICardHeader>
+                            <UICardContent>
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     {/* Left Hemisphere */}
                                     <div className="space-y-3">
@@ -546,7 +557,7 @@ export default function SignalVisualizer() {
                                         </div>
                                         <div className="space-y-2">
                                             {["Delta", "Theta", "Alpha", "Beta", "Gamma"].map((band, index) => {
-                                                const value = radarDataCh0Ref.current.find((d) => d.subject === band)?.value ?? 0;
+                                                const value = radarCh0DataRef.current.find((d) => d.subject === band)?.value ?? 0;
                                                 const colors = ["bg-purple-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-red-500"];
                                                 return (
                                                     <div key={band} className="space-y-2">
@@ -554,7 +565,7 @@ export default function SignalVisualizer() {
                                                             <span className="font-medium">{band}</span>
                                                             <span className="text-muted-foreground">{value.toFixed(1)}%</span>
                                                         </div>
-                                                        <Progress value={Math.min(value, 100)} className="h-2" />
+                                                        <UIProgress value={Math.min(value, 100)} className="h-2" />
                                                     </div>
                                                 );
                                             })}
@@ -569,7 +580,7 @@ export default function SignalVisualizer() {
                                         </div>
                                         <div className="space-y-2">
                                             {["Delta", "Theta", "Alpha", "Beta", "Gamma"].map((band, index) => {
-                                                const value = radarDataCh1Ref.current.find((d) => d.subject === band)?.value ?? 0;
+                                                const value = radarCh1DataRef.current.find((d) => d.subject === band)?.value ?? 0;
                                                 const colors = ["bg-purple-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-red-500"];
                                                 return (
                                                     <div key={band} className="space-y-2">
@@ -577,96 +588,72 @@ export default function SignalVisualizer() {
                                                             <span className="font-medium">{band}</span>
                                                             <span className="text-muted-foreground">{value.toFixed(1)}%</span>
                                                         </div>
-                                                        <Progress value={Math.min(value, 100)} className="h-2" />
+                                                        <UIProgress value={Math.min(value, 100)} className="h-2" />
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                     </div>
 
-                                    {/* Radar Chart */}
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                            <Waves className="h-5 w-5" />
-                                            <h3 className="font-semibold">Radar Analysis</h3>
-                                        </div>
-                                        <div className="h-48">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <RadarChart data={radarDataCh0Ref.current}>
-                                                    <PolarGrid />
-                                                    <PolarAngleAxis dataKey="subject" />
-                                                    <PolarRadiusAxis />
-                                                    <Radar
-                                                        name="Left Hemisphere"
-                                                        dataKey="value"
-                                                        stroke="#3b82f6"
-                                                        fill="#3b82f6"
-                                                        fillOpacity={0.3}
-                                                    />
-                                                </RadarChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
+
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </UICardContent>
+                        </UICard>
 
                         {/* Signal Plots */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-sm">EEG Channel 1</CardTitle>
-                                </CardHeader>
-                                <CardContent>
+                            <UICard>
+                                <UICardHeader>
+                                    <UICardTitle className="text-sm">EEG Channel 1</UICardTitle>
+                                </UICardHeader>
+                                <UICardContent>
                                     <div className="h-32">
-                                        <WebglPlotCanvas 
-                                            ref={canvaseeg1Ref} 
-                                            channels={[1]} 
-                                            colors={{1: "#C29963"}} 
-                                            gridnumber={10} 
+                                        <WebglPlotCanvas
+                                            ref={eeg1CanvasRef}
+                                            channels={[1]}
+                                            colors={{ 1: "#C29963" }}
+                                            gridnumber={10}
                                         />
                                     </div>
-                                </CardContent>
-                            </Card>
+                                </UICardContent>
+                            </UICard>
 
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-sm">EEG Channel 2</CardTitle>
-                                </CardHeader>
-                                <CardContent>
+                            <UICard>
+                                <UICardHeader>
+                                    <UICardTitle className="text-sm">EEG Channel 2</UICardTitle>
+                                </UICardHeader>
+                                <UICardContent>
                                     <div className="h-32">
-                                        <WebglPlotCanvas 
-                                            ref={canvaseeg2Ref} 
-                                            channels={[2]} 
-                                            colors={{2: "#63A2C2"}} 
-                                            gridnumber={10} 
+                                        <WebglPlotCanvas
+                                            ref={eeg2CanvasRef}
+                                            channels={[2]}
+                                            colors={{ 2: "#63A2C2" }}
+                                            gridnumber={10}
                                         />
                                     </div>
-                                </CardContent>
-                            </Card>
+                                </UICardContent>
+                            </UICard>
 
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-sm">ECG Signal</CardTitle>
-                                </CardHeader>
-                                <CardContent>
+                            <UICard>
+                                <UICardHeader>
+                                    <UICardTitle className="text-sm">ECG Signal</UICardTitle>
+                                </UICardHeader>
+                                <UICardContent>
                                     <div className="h-32">
-                                        <WebglPlotCanvas 
-                                            ref={canvasecgRef} 
-                                            channels={[3]} 
-                                            colors={{3: "#E4967E"}} 
-                                            gridnumber={10} 
+                                        <WebglPlotCanvas
+                                            ref={ecgCanvasRef}
+                                            channels={[3]}
+                                            colors={{ 3: "#E4967E" }}
+                                            gridnumber={10}
                                         />
                                     </div>
-                                </CardContent>
-                            </Card>
-                          
+                                </UICardContent>
+                            </UICard>
+
                         </div>
-                    </TabsContent>
+                    </UITabsContent>
 
-                   
-
-                    <TabsContent value="meditation" className="space-y-6">
+                    <UITabsContent value="meditation" className="space-y-6">
                         {/* Hero Section */}
                         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950 border border-indigo-200 dark:border-indigo-800">
                             <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:60px_60px]" />
@@ -694,37 +681,107 @@ export default function SignalVisualizer() {
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <MeditationSession
-                                    connected={connected}
+
+                                <MindSession
+                                    connected={isDeviceConnected}
                                     onStartSession={() => {
                                         sessionDataRef.current = [];
                                         isMeditatingRef.current = true;
                                     }}
                                     onEndSession={() => {
                                         isMeditatingRef.current = false;
+                                        // Calculate results object from sessionDataRef.current
+                                        const sessionData = sessionDataRef.current;
+                                        let duration = 0;
+                                        let averages = { alpha: 0, beta: 0, theta: 0, delta: 0, symmetry: 0 };
+                                        let dominantBands: Record<string, number> = {};
+                                        let mostFrequent = "";
+                                        let avgSymmetry = "0";
+                                        let formattedDuration = "0 min";
+                                        let statePercentages: Record<string, string> = {};
+                                        let goodMeditationPct = "0";
+                                        let weightedEEGScore = 0;
+                                        let focusScore = "";
+                                        let symmetry = "";
+                                        let mentalState = "";
+                                        let stateDescription = "";
+                                        const convert = (ticks: number) => `${Math.round(ticks / 60000)} min`;
+
+                                        if (sessionData.length > 1) {
+                                            duration = Math.round((sessionData.at(-1)!.timestamp - sessionData[0].timestamp) / 1000);
+                                            type BandKey = "alpha" | "beta" | "theta" | "delta" | "symmetry";
+                                            averages = (["alpha", "beta", "theta", "delta", "symmetry"] as BandKey[]).reduce((acc, key) => {
+                                                acc[key] = sessionData.reduce((sum, d) => sum + d[key], 0) / sessionData.length;
+                                                return acc;
+                                            }, { alpha: 0, beta: 0, theta: 0, delta: 0, symmetry: 0 });
+                                            // Dominant band
+                                            const bandCounts: Record<string, number> = { alpha: 0, beta: 0, theta: 0, delta: 0 };
+                                            sessionData.forEach(d => {
+                                                let maxBand = "alpha";
+                                                let maxValue = d.alpha;
+                                                if (d.beta > maxValue) { maxBand = "beta"; maxValue = d.beta; }
+                                                if (d.theta > maxValue) { maxBand = "theta"; maxValue = d.theta; }
+                                                if (d.delta > maxValue) { maxBand = "delta"; maxValue = d.delta; }
+                                                bandCounts[maxBand]++;
+                                            });
+                                            mostFrequent = Object.entries(bandCounts).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+                                            dominantBands = bandCounts;
+                                            avgSymmetry = (averages.symmetry ?? 0).toFixed(2);
+                                            formattedDuration = convert(sessionData.at(-1)!.timestamp - sessionData[0].timestamp);
+                                            // State percentages
+                                            const total = sessionData.length;
+                                            statePercentages = Object.fromEntries(Object.entries(bandCounts).map(([k, v]) => [k, ((v / total) * 100).toFixed(1)]));
+                                            // Good meditation percent (alpha or theta)
+                                            const goodCount = sessionData.filter(d => {
+                                                let maxBand = "alpha";
+                                                let maxValue = d.alpha;
+                                                if (d.beta > maxValue) { maxBand = "beta"; maxValue = d.beta; }
+                                                if (d.theta > maxValue) { maxBand = "theta"; maxValue = d.theta; }
+                                                if (d.delta > maxValue) { maxBand = "delta"; maxValue = d.delta; }
+                                                return maxBand === "alpha" || maxBand === "theta";
+                                            }).length;
+                                            goodMeditationPct = ((goodCount / total) * 100).toFixed(1);
+                                            weightedEEGScore = (averages.alpha + averages.theta) / (averages.beta + 0.001);
+                                            focusScore = weightedEEGScore.toFixed(2);
+                                            symmetry = avgSymmetry;
+                                            mentalState = mostFrequent;
+                                            stateDescription = mostFrequent === "alpha" ? "Relaxed" : mostFrequent === "theta" ? "Meditative" : mostFrequent === "beta" ? "Focused" : "Restful";
+                                        }
+
+                                        const resultsObject = {
+                                            duration,
+                                            averages,
+                                            mentalState,
+                                            stateDescription,
+                                            focusScore,
+                                            symmetry,
+                                            data: sessionData,
+                                            dominantBands,
+                                            mostFrequent,
+                                            convert,
+                                            avgSymmetry,
+                                            formattedDuration,
+                                            statePercentages,
+                                            goodMeditationPct,
+                                            weightedEEGScore,
+                                        };
+                                        setSessionResults(resultsObject); // <-- This must be called!
                                     }}
                                     sessionData={sessionDataRef.current}
-                                    darkMode={darkMode}
+                                    darkMode={isDarkMode}
                                     setShowResults={setShowResults}
                                     setSessionResults={setSessionResults}
-                                    sessionResults={sessionResults}
+                                    sessionResults={sessionSummary}
                                     renderSessionResults={(results) => (
                                         <div className="mt-6">
-                                            <Dialog>
-                                                <DialogTrigger asChild>
-                                                    <Button 
-                                                        size="lg"
-                                                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                                                    >
-                                                        <Activity className="mr-2 h-5 w-15" />
-                                                        View Session Insights
-                                                    </Button>
-                                                </DialogTrigger>
-                                                
-                                                <DialogContent className="max-w-[98vw] max-h-[98vh] p-0 bg-white/98 dark:bg-slate-900/98 backdrop-blur-xl border-0 shadow-2xl rounded-2xl">
-                                                    <DialogHeader className="px-10 py-8 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950 border-b border-indigo-200 dark:border-indigo-800 rounded-t-2xl">
-                                                        <DialogTitle className="flex items-center gap-4 text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                                            <UIDialog>
+                                                <UIDialogTrigger asChild>
+                                                    <UIButton>View Session Insights</UIButton>
+                                                </UIDialogTrigger>
+
+                                                <UIDialogContent className="max-w-[98vw] max-h-[98vh] p-0 bg-white/98 dark:bg-slate-900/98 backdrop-blur-xl border-0 shadow-2xl rounded-2xl">
+                                                    <UIDialogHeader className="px-10 py-8 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950 border-b border-indigo-200 dark:border-indigo-800 rounded-t-2xl">
+                                                        <UIDialogTitle className="flex items-center gap-4 text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                                                             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
                                                                 <Brain className="h-8 w-8 text-white" />
                                                             </div>
@@ -732,27 +789,27 @@ export default function SignalVisualizer() {
                                                                 <div>Session Complete</div>
                                                                 <div className="text-lg font-normal text-muted-foreground">Deep Insights & Analysis</div>
                                                             </div>
-                                                        </DialogTitle>
-                                                    </DialogHeader>
-                                                    
-                                                    <ScrollArea className="max-h-[calc(98vh-140px)]">
+                                                        </UIDialogTitle>
+                                                    </UIDialogHeader>
+
+                                                    <UIScrollArea className="max-h-[calc(98vh-140px)]">
                                                         <div className="p-10">
                                                             <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
                                                                 {/* Left Column - Waveform */}
                                                                 <div className="xl:col-span-5">
-                                                                    <Card className="border-0 shadow-xl bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950 overflow-hidden">
-                                                                        <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900">
-                                                                            <CardTitle className="flex items-center gap-3 text-xl font-bold text-indigo-700 dark:text-indigo-300">
+                                                                    <UICard className="border-0 shadow-xl bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950 overflow-hidden">
+                                                                        <UICardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900">
+                                                                            <UICardTitle className="flex items-center gap-3 text-xl font-bold text-indigo-700 dark:text-indigo-300">
                                                                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                                                                                     <Waves className="h-5 w-5 text-white" />
                                                                                 </div>
                                                                                 Brainwave Activity
-                                                                            </CardTitle>
-                                                                            <CardDescription className="text-indigo-600 dark:text-indigo-400">
+                                                                            </UICardTitle>
+                                                                            <UICardDescription className="text-indigo-600 dark:text-indigo-400">
                                                                                 Real-time brainwave patterns during your session
-                                                                            </CardDescription>
-                                                                        </CardHeader>
-                                                                        <CardContent className="p-6">
+                                                                            </UICardDescription>
+                                                                        </UICardHeader>
+                                                                        <UICardContent className="p-6">
                                                                             <MeditationWaveform
                                                                                 data={sessionDataRef.current}
                                                                                 sessionDuration={
@@ -764,41 +821,41 @@ export default function SignalVisualizer() {
                                                                                         )
                                                                                         : 0
                                                                                 }
-                                                                                darkMode={darkMode}
+                                                                                darkMode={isDarkMode}
                                                                             />
-                                                                        </CardContent>
-                                                                    </Card>
+                                                                        </UICardContent>
+                                                                    </UICard>
                                                                 </div>
 
                                                                 {/* Right Column - Results */}
                                                                 <div className="xl:col-span-7 space-y-8">
                                                                     {/* Mental State Card */}
-                                                                    <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 dark:from-purple-950 dark:via-pink-950 dark:to-rose-950 overflow-hidden">
-                                                                        <CardContent className="p-10">
+                                                                    <UICard className="border-0 shadow-xl bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 dark:from-purple-950 dark:via-pink-950 dark:to-rose-950 overflow-hidden">
+                                                                        <UICardContent className="p-10">
                                                                             <div className="text-center">
                                                                                 <div className="text-8xl mb-6 animate-pulse">
                                                                                     {results.mostFrequent === 'alpha' ? '🧘‍♀️' :
                                                                                         results.mostFrequent === 'theta' ? '🛌' :
-                                                                                        results.mostFrequent === 'beta' ? '🎯' :
-                                                                                        results.mostFrequent === 'delta' ? '💤' : '⚪'}
+                                                                                            results.mostFrequent === 'beta' ? '🎯' :
+                                                                                                results.mostFrequent === 'delta' ? '💤' : '⚪'}
                                                                                 </div>
                                                                                 <h3 className="text-3xl font-bold mb-3 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent">
                                                                                     {results.mostFrequent === 'alpha' ? 'Deep Relaxation' :
                                                                                         results.mostFrequent === 'theta' ? 'Profound Meditation' :
-                                                                                        results.mostFrequent === 'beta' ? 'Active Focus' :
-                                                                                        results.mostFrequent === 'delta' ? 'Restful State' : 'Balanced State'}
+                                                                                            results.mostFrequent === 'beta' ? 'Active Focus' :
+                                                                                                results.mostFrequent === 'delta' ? 'Restful State' : 'Balanced State'}
                                                                                 </h3>
                                                                                 <p className="text-lg text-muted-foreground">
                                                                                     Your primary mental state during this session
                                                                                 </p>
                                                                             </div>
-                                                                        </CardContent>
-                                                                    </Card>
+                                                                        </UICardContent>
+                                                                    </UICard>
 
                                                                     {/* Stats Grid */}
                                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                                        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 overflow-hidden">
-                                                                            <CardContent className="p-8 text-center">
+                                                                        <UICard className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 overflow-hidden">
+                                                                            <UICardContent className="p-8 text-center">
                                                                                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 mx-auto mb-4 flex items-center justify-center shadow-lg">
                                                                                     <Target className="h-8 w-8 text-white" />
                                                                                 </div>
@@ -808,11 +865,11 @@ export default function SignalVisualizer() {
                                                                                 <p className="text-xl font-bold capitalize text-blue-700 dark:text-blue-300">
                                                                                     {results.mostFrequent}
                                                                                 </p>
-                                                                            </CardContent>
-                                                                        </Card>
+                                                                            </UICardContent>
+                                                                        </UICard>
 
-                                                                        <Card className="border-0 shadow-lg bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-950 dark:to-teal-950 overflow-hidden">
-                                                                            <CardContent className="p-8 text-center">
+                                                                        <UICard className="border-0 shadow-lg bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-950 dark:to-teal-950 overflow-hidden">
+                                                                            <UICardContent className="p-8 text-center">
                                                                                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-600 mx-auto mb-4 flex items-center justify-center shadow-lg">
                                                                                     <Clock className="h-8 w-8 text-white" />
                                                                                 </div>
@@ -822,11 +879,11 @@ export default function SignalVisualizer() {
                                                                                 <p className="text-xl font-bold text-cyan-700 dark:text-cyan-300">
                                                                                     {results.duration}
                                                                                 </p>
-                                                                            </CardContent>
-                                                                        </Card>
+                                                                            </UICardContent>
+                                                                        </UICard>
 
-                                                                        <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950 dark:to-green-950 overflow-hidden">
-                                                                            <CardContent className="p-8 text-center">
+                                                                        <UICard className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950 dark:to-green-950 overflow-hidden">
+                                                                            <UICardContent className="p-8 text-center">
                                                                                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 mx-auto mb-4 flex items-center justify-center shadow-lg">
                                                                                     <Zap className="h-8 w-8 text-white" />
                                                                                 </div>
@@ -840,24 +897,24 @@ export default function SignalVisualizer() {
                                                                                             ? 'Left Dominant'
                                                                                             : 'Right Dominant'}
                                                                                 </p>
-                                                                            </CardContent>
-                                                                        </Card>
+                                                                            </UICardContent>
+                                                                        </UICard>
                                                                     </div>
 
                                                                     {/* Brainwave Analysis */}
-                                                                    <Card className="border-0 shadow-xl bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950 dark:to-gray-950">
-                                                                        <CardHeader className="bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-900 dark:to-gray-900">
-                                                                            <CardTitle className="flex items-center gap-3 text-xl font-bold text-slate-700 dark:text-slate-200">
+                                                                    <UICard className="border-0 shadow-xl bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950 dark:to-gray-950">
+                                                                        <UICardHeader className="bg-gradient-to-r from-slate-100 to-gray-100 dark:from-slate-900 dark:to-gray-900">
+                                                                            <UICardTitle className="flex items-center gap-3 text-xl font-bold text-slate-700 dark:text-slate-200">
                                                                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-500 to-gray-600 flex items-center justify-center">
                                                                                     <BarChart3 className="h-5 w-5 text-white" />
                                                                                 </div>
                                                                                 Brainwave Analysis
-                                                                            </CardTitle>
-                                                                            <CardDescription className="text-slate-600 dark:text-slate-400">
+                                                                            </UICardTitle>
+                                                                            <UICardDescription className="text-slate-600 dark:text-slate-400">
                                                                                 Detailed breakdown of your brainwave patterns
-                                                                            </CardDescription>
-                                                                        </CardHeader>
-                                                                        <CardContent className="p-8">
+                                                                            </UICardDescription>
+                                                                        </UICardHeader>
+                                                                        <UICardContent className="p-8">
                                                                             <div className="space-y-6">
                                                                                 {Object.entries(results.statePercentages).map(([state, pct]) => (
                                                                                     <div key={state} className="space-y-3">
@@ -865,37 +922,35 @@ export default function SignalVisualizer() {
                                                                                             <span className="text-base font-semibold text-slate-700 dark:text-slate-300">
                                                                                                 {state}
                                                                                             </span>
-                                                                                            <Badge variant="secondary" className="text-slate-700 dark:text-slate-300 px-3 py-1">
+                                                                                            <UIBadge variant="secondary" className="text-slate-700 dark:text-slate-300 px-3 py-1">
                                                                                                 {pct}%
-                                                                                            </Badge>
+                                                                                            </UIBadge>
                                                                                         </div>
-                                                                                        <Progress value={Number(pct)} className="h-4" />
+                                                                                        <UIProgress value={Number(pct)} className="h-4" />
                                                                                     </div>
                                                                                 ))}
                                                                             </div>
-                                                                        </CardContent>
-                                                                    </Card>
+                                                                        </UICardContent>
+                                                                    </UICard>
 
                                                                     {/* Performance Indicator */}
-                                                                    <Card className={`border-0 shadow-xl overflow-hidden ${
-                                                                        Number(results.goodMeditationPct) >= 75 
-                                                                            ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-green-950 dark:via-emerald-950 dark:to-teal-950' 
-                                                                            : Number(results.goodMeditationPct) >= 50 
+                                                                    <UICard className={`border-0 shadow-xl overflow-hidden ${Number(results.goodMeditationPct) >= 75
+                                                                            ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-green-950 dark:via-emerald-950 dark:to-teal-950'
+                                                                            : Number(results.goodMeditationPct) >= 50
                                                                                 ? 'bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 dark:from-yellow-950 dark:via-amber-950 dark:to-orange-950'
                                                                                 : 'bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 dark:from-orange-950 dark:via-red-950 dark:to-pink-950'
-                                                                    }`}>
-                                                                        <CardContent className="p-10 text-center">
+                                                                        }`}>
+                                                                        <UICardContent className="p-10 text-center">
                                                                             <div className="text-6xl mb-6 animate-bounce">
                                                                                 {Number(results.goodMeditationPct) >= 75 ? '🌟' :
                                                                                     Number(results.goodMeditationPct) >= 50 ? '🌿' : '⚠️'}
                                                                             </div>
-                                                                            <h3 className={`text-2xl font-bold mb-4 ${
-                                                                                Number(results.goodMeditationPct) >= 75 
-                                                                                    ? 'text-green-700 dark:text-green-300' 
-                                                                                    : Number(results.goodMeditationPct) >= 50 
+                                                                            <h3 className={`text-2xl font-bold mb-4 ${Number(results.goodMeditationPct) >= 75
+                                                                                    ? 'text-green-700 dark:text-green-300'
+                                                                                    : Number(results.goodMeditationPct) >= 50
                                                                                         ? 'text-yellow-700 dark:text-yellow-300'
                                                                                         : 'text-orange-700 dark:text-orange-300'
-                                                                            }`}>
+                                                                                }`}>
                                                                                 {Number(results.goodMeditationPct) >= 75
                                                                                     ? 'Excellent Session!'
                                                                                     : Number(results.goodMeditationPct) >= 50
@@ -909,21 +964,21 @@ export default function SignalVisualizer() {
                                                                                         ? `You spent ${Math.round(Number(results.goodMeditationPct))}% in a good meditation state.`
                                                                                         : `You're building your meditation foundation. Keep going!`}
                                                                             </p>
-                                                                        </CardContent>
-                                                                    </Card>
+                                                                        </UICardContent>
+                                                                    </UICard>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </ScrollArea>
-                                                </DialogContent>
-                                            </Dialog>
+                                                    </UIScrollArea>
+                                                </UIDialogContent>
+                                            </UIDialog>
                                         </div>
                                     )}
                                 />
                             </div>
                         </div>
-                    </TabsContent>
-                </Tabs>
+                    </UITabsContent>
+                </UITabs>
             </main>
         </div>
     );

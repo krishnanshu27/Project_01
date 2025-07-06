@@ -2,7 +2,7 @@
 import React, { useRef, useEffect,useState } from 'react';
 import { Award } from 'lucide-react';
 
-interface EEGSample {
+interface BrainwaveSample {
   timestamp?: number;
   alpha: number;
   beta: number;
@@ -11,26 +11,26 @@ interface EEGSample {
 }
 
 interface Props {
-  data: EEGSample[];
+  data: BrainwaveSample[];
   sessionDuration: number;
   darkMode?: boolean;
   className?: string;
 }
 
-const MeditationAnalysis: React.FC<Props> = ({
+const MeditationSessionAnalyzer: React.FC<Props> = ({
   data,
   sessionDuration,
   darkMode = true,
   className = ''
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasReference = useRef<HTMLCanvasElement>(null);
 
-  const calculateMetrics = () => {
+  const computeSessionMetrics = () => {
     if (!data.length) return {
-      avgAlpha: 0,
-      avgBeta: 0,
-      avgTheta: 0,
-      avgDelta: 0,
+      averageAlpha: 0,
+      averageBeta: 0,
+      averageTheta: 0,
+      averageDelta: 0,
       deepestTheta: 0,
       consistency: 0,
       flowState: 0,
@@ -45,13 +45,13 @@ const MeditationAnalysis: React.FC<Props> = ({
     };
 
     // Calculate averages
-    const avgAlpha = data.reduce((sum, s) => sum + s.alpha, 0) / data.length;
-    const avgBeta = data.reduce((sum, s) => sum + s.beta, 0) / data.length;
-    const avgTheta = data.reduce((sum, s) => sum + s.theta, 0) / data.length;
-    const avgDelta = data.reduce((sum, s) => sum + (s.delta ?? 0), 0) / data.length;
+    const averageAlpha = data.reduce((sum, s) => sum + s.alpha, 0) / data.length;
+    const averageBeta = data.reduce((sum, s) => sum + s.beta, 0) / data.length;
+    const averageTheta = data.reduce((sum, s) => sum + s.theta, 0) / data.length;
+    const averageDelta = data.reduce((sum, s) => sum + (s.delta ?? 0), 0) / data.length;
 
     // Consistent state classification logic
-    const classifyState = (alpha: number, beta: number, theta: number, delta: number) => {
+    const classifyMentalState = (alpha: number, beta: number, theta: number, delta: number) => {
       const values = { alpha, beta, theta, delta };
       const maxKey = Object.keys(values).reduce((a, b) => values[a as keyof typeof values] > values[b as keyof typeof values] ? a : b);
 
@@ -68,7 +68,7 @@ const MeditationAnalysis: React.FC<Props> = ({
     const stateCounts = { Relaxed: 0, Focused: 0, 'Deep Meditation': 0, Drowsy: 0 };
 
     data.forEach(sample => {
-      const state = classifyState(sample.alpha, sample.beta, sample.theta, sample.delta ?? 0);
+      const state = classifyMentalState(sample.alpha, sample.beta, sample.theta, sample.delta ?? 0);
       stateCounts[state]++;
     });
 
@@ -93,10 +93,10 @@ const MeditationAnalysis: React.FC<Props> = ({
       stateHeights: { relaxed: number; focused: number; deep: number; drowsy: number };
     }> = [];
 
-    const numPhases = 12;
-    const phaseLength = Math.ceil(data.length / numPhases);
+    const numberOfPhases = 12;
+    const phaseLength = Math.ceil(data.length / numberOfPhases);
 
-    for (let i = 0; i < numPhases; i++) {
+    for (let i = 0; i < numberOfPhases; i++) {
       const startIdx = i * phaseLength;
       const endIdx = Math.min(startIdx + phaseLength, data.length);
       const segment = data.slice(startIdx, endIdx);
@@ -109,7 +109,7 @@ const MeditationAnalysis: React.FC<Props> = ({
       const avgD = segment.reduce((sum, s) => sum + (s.delta ?? 0), 0) / segment.length;
 
       // Determine dominant phase
-      const phaseName = classifyState(avgA, avgB, avgT, avgD).toLowerCase().replace(' ', '');
+      const phaseName = classifyMentalState(avgA, avgB, avgT, avgD).toLowerCase().replace(' ', '');
 
       // Calculate heights for stacked bars (normalize to 0-1 range)
       const total = avgA + avgB + avgT + avgD;
@@ -131,10 +131,10 @@ const MeditationAnalysis: React.FC<Props> = ({
     }
 
     return {
-      avgAlpha,
-      avgBeta,
-      avgTheta,
-      avgDelta,
+      averageAlpha,
+      averageBeta,
+      averageTheta,
+      averageDelta,
       statePercentages,
       mostFrequent,
       phases
@@ -142,14 +142,14 @@ const MeditationAnalysis: React.FC<Props> = ({
   };
 
 
-  const metrics = calculateMetrics();
+  const metrics = computeSessionMetrics();
   const meditationScore = Math.min(100, Math.round((metrics.flowState ?? 0) * 100));
 
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   // Set up resize observer to handle container size changes
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = canvasReference.current;
     if (!canvas) return;
 
     const resizeObserver = new ResizeObserver(entries => {
@@ -164,7 +164,7 @@ const MeditationAnalysis: React.FC<Props> = ({
   // Replace the useEffect canvas rendering with this:
   
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = canvasReference.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx || !data.length || canvasSize.width === 0) return;
 
@@ -274,7 +274,7 @@ const MeditationAnalysis: React.FC<Props> = ({
           </div>
           <div className="w-full h-[120px]">
             <canvas 
-              ref={canvasRef} 
+              ref={canvasReference} 
               className="w-full h-full rounded-xl"
               style={{
                 width: '100%',
@@ -316,4 +316,4 @@ const MeditationAnalysis: React.FC<Props> = ({
   );
 };
 
-export default MeditationAnalysis;
+export default MeditationSessionAnalyzer;
