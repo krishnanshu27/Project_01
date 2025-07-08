@@ -2,230 +2,230 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { WebglPlot, WebglLine, ColorRGBA } from 'webgl-plot';
 
-export type HRVPlotCanvasHandle = {
+export type HeartRateVariabilityHandle = {
     /** Force a redraw of the plot */
-    redraw: () => void;
+    refreshDisplay: () => void;
     /** Push a new HRV value into the ring buffer */
-    updateHRV: (hrv: number) => void;
+    addHRVData: (hrv: number) => void;
     /** Get the canvas element */
-    getCanvas: () => HTMLCanvasElement | null;
-    darkMode: boolean;
+    getCanvasElement: () => HTMLCanvasElement | null;
+    isDarkTheme: boolean;
 };
 
-type Props = {
+type ComponentProperties = {
     /** Number of points to display */
-    numPoints?: number;
+    dataPointCount?: number;
     /** Hex color for the line */
-    color?: string;
-    darkMode?: boolean;
+    lineColor?: string;
+    isDarkTheme?: boolean;
 };
 
 
-const HRVPlotCanvas = forwardRef<HRVPlotCanvasHandle, Props>(
-    ({ numPoints = 2000, color = '#d97706', darkMode = false }, ref) => {
-        const canvasRef = useRef<HTMLCanvasElement>(null);
-        const plotRef = useRef<WebglPlot | null>(null);
-        const lineRef = useRef<WebglLine | null>(null);
-        const sweepRef = useRef(0);
+const HeartRateVariabilityCanvas = forwardRef<HeartRateVariabilityHandle, ComponentProperties>(
+    ({ dataPointCount = 2000, lineColor = '#d97706', isDarkTheme = false }, ref) => {
+        const canvasElementRef = useRef<HTMLCanvasElement>(null);
+        const webglPlotRef = useRef<WebglPlot | null>(null);
+        const plotLineRef = useRef<WebglLine | null>(null);
+        const dataIndexRef = useRef(0);
 
         // convert hex to ColorRGBA
-        function hexToRGBA(hex: string): ColorRGBA {
-            const r = parseInt(hex.slice(1, 3), 16) / 255;
-            const g = parseInt(hex.slice(3, 5), 16) / 255;
-            const b = parseInt(hex.slice(5, 7), 16) / 255;
-            return new ColorRGBA(r, g, b, 1);
+        function convertHexToRGBA(hexColor: string): ColorRGBA {
+            const redValue = parseInt(hexColor.slice(1, 3), 16) / 255;
+            const greenValue = parseInt(hexColor.slice(3, 5), 16) / 255;
+            const blueValue = parseInt(hexColor.slice(5, 7), 16) / 255;
+            return new ColorRGBA(redValue, greenValue, blueValue, 1);
         }
 
         // expose imperative methods
         useImperativeHandle(ref, () => ({
-            redraw: () => plotRef.current?.update() ?? undefined,
-            updateHRV: (hrv: number) => {
-                const safeHRV = Math.max(0, Math.min(hrv, 1500));  // Clamp to safe range
-                const a = (safeHRV - 750) * (2 / 1500);            // Normalize around 750ms
+            refreshDisplay: () => webglPlotRef.current?.update() ?? undefined,
+            addHRVData: (hrvValue: number) => {
+                const clampedHRV = Math.max(0, Math.min(hrvValue, 1500));  // Clamp to safe range
+                const normalizedValue = (clampedHRV - 750) * (2 / 1500);            // Normalize around 750ms
 
-                const line = lineRef.current;
-                if (!line) return;
-                const idx = sweepRef.current;
-                line.setY(idx, a);
-                sweepRef.current = (idx + 1) % line.numPoints;
-                plotRef.current?.update();
+                const plotLine = plotLineRef.current;
+                if (!plotLine) return;
+                const currentIndex = dataIndexRef.current;
+                plotLine.setY(currentIndex, normalizedValue);
+                dataIndexRef.current = (currentIndex + 1) % plotLine.numPoints;
+                webglPlotRef.current?.update();
             },
-            getCanvas: () => canvasRef.current,
-            darkMode: darkMode,
-        }), [darkMode]);
+            getCanvasElement: () => canvasElementRef.current,
+            isDarkTheme: isDarkTheme,
+        }), [isDarkTheme]);
        
-        const containerRef = useRef<HTMLDivElement>(null)
+        const containerElementRef = useRef<HTMLDivElement>(null)
         // Constants (could be props if needed)
-        const samplingRate = 500
-        const selectedBits = 10
-        const theme = 'dark'
-        const gridCreatedRef = useRef(false) // Track if grid has been created
-        const createGridLines = useCallback(() => {
-            if (!containerRef.current) return;
+        const dataFrequency = 500
+        const bitResolution = 10
+        const visualTheme = 'dark'
+        const gridInitializedRef = useRef(false) // Track if grid has been created
+        
+        const generateGridLines = useCallback(() => {
+            if (!containerElementRef.current) return;
 
             // Clear existing grid lines if they exist
-            const existingWrapper = containerRef.current.querySelector('.grid-lines-wrapper');
-            if (existingWrapper) {
-                containerRef.current.removeChild(existingWrapper);
+            const existingGridWrapper = containerElementRef.current.querySelector('.grid-lines-wrapper');
+            if (existingGridWrapper) {
+                containerElementRef.current.removeChild(existingGridWrapper);
             }
 
-            const canvasWrapper = document.createElement("div");
-            canvasWrapper.className = "grid-lines-wrapper absolute inset-0 pointer-events-none";
+            const gridWrapper = document.createElement("div");
+            gridWrapper.className = "grid-lines-wrapper absolute inset-0 pointer-events-none";
 
-            const opacityDarkMajor = "0.2";
-            const opacityDarkMinor = "0.05";
-            const opacityLightMajor = "0.2";
-            const opacityLightMinor = "0.1";
-            const distanceminor = samplingRate * 0.04;
-            const numGridLines = (Math.pow(2, selectedBits) * 4 / distanceminor);
+            const darkMajorOpacity = "0.2";
+            const darkMinorOpacity = "0.05";
+            const lightMajorOpacity = "0.2";
+            const lightMinorOpacity = "0.1";
+            const minorLineSpacing = dataFrequency * 0.04;
+            const totalGridLines = (Math.pow(2, bitResolution) * 4 / minorLineSpacing);
 
             // Vertical lines - modified to show only one minor line between major lines
-            const majorLineStepv = 5; // Original major line spacing
-            const linesPerMajorSegmentv = 2; // 1 major + 1 minor line per segment
-            const totalMajorSegmentsv = Math.ceil(numGridLines / majorLineStepv);
-            const totalLinesv = totalMajorSegmentsv * linesPerMajorSegmentv;
+            const majorVerticalStep = 5; // Original major line spacing
+            const verticalLinesPerSegment = 2; // 1 major + 1 minor line per segment
+            const totalVerticalSegments = Math.ceil(totalGridLines / majorVerticalStep);
+            const totalVerticalLines = totalVerticalSegments * verticalLinesPerSegment;
             
-            for (let j = 1; j < totalLinesv; j++) {
-                // Check if this is a major line (every linesPerMajorSegment-th line)
-                const isMajorLine = j % linesPerMajorSegmentv === 0;
+            for (let lineIndex = 1; lineIndex < totalVerticalLines; lineIndex++) {
+                // Check if this is a major line (every verticalLinesPerSegment-th line)
+                const isMajorVerticalLine = lineIndex % verticalLinesPerSegment === 0;
 
                 // Calculate the original position index
-                const originalPositionIndex = (j / linesPerMajorSegmentv) * majorLineStepv;
+                const originalVerticalIndex = (lineIndex / verticalLinesPerSegment) * majorVerticalStep;
 
-                // Skip if we exceed the original numGridLines
-                if (originalPositionIndex >= numGridLines) continue;
+                // Skip if we exceed the original totalGridLines
+                if (originalVerticalIndex >= totalGridLines) continue;
 
-                const gridLineX = document.createElement("div");
-                gridLineX.className = "absolute bg-[rgb(128,128,128)]";
-                gridLineX.style.width = "1px";
-                gridLineX.style.height = "100%";
-                gridLineX.style.left = `${((originalPositionIndex / numGridLines) * 100).toFixed(3)}%`;
-                gridLineX.style.opacity = isMajorLine
-                    ? (darkMode ? opacityDarkMajor : opacityLightMajor)
-                    : (darkMode ? opacityDarkMinor : opacityLightMinor);
-                canvasWrapper.appendChild(gridLineX);
+                const verticalGridLine = document.createElement("div");
+                verticalGridLine.className = "absolute bg-[rgb(128,128,128)]";
+                verticalGridLine.style.width = "1px";
+                verticalGridLine.style.height = "100%";
+                verticalGridLine.style.left = `${((originalVerticalIndex / totalGridLines) * 100).toFixed(3)}%`;
+                verticalGridLine.style.opacity = isMajorVerticalLine
+                    ? (isDarkTheme ? darkMajorOpacity : lightMajorOpacity)
+                    : (isDarkTheme ? darkMinorOpacity : lightMinorOpacity);
+                gridWrapper.appendChild(verticalGridLine);
             }
 
             // Horizontal lines with labels
-            const horizontalline = 35;
-            const maxValue = 1400;
+            const horizontalLineCount = 35;
+            const maximumValue = 1400;
             // Calculate the step between major lines (5 units apart in your original code)
-            const majorLineStep = 5;
+            const majorHorizontalStep = 5;
             // We want only one minor line between major lines, so total lines per major segment is 2 (1 major + 1 minor)
-            const linesPerMajorSegment = 2;
-            // Total major segments is horizontalline / majorLineStep
-            const totalMajorSegments = Math.ceil(horizontalline / majorLineStep);
-            // New total lines is totalMajorSegments * linesPerMajorSegment
-            const totalLines = totalMajorSegments * linesPerMajorSegment;
+            const horizontalLinesPerSegment = 2;
+            // Total major segments is horizontalLineCount / majorHorizontalStep
+            const totalHorizontalSegments = Math.ceil(horizontalLineCount / majorHorizontalStep);
+            // New total lines is totalHorizontalSegments * horizontalLinesPerSegment
+            const totalHorizontalLines = totalHorizontalSegments * horizontalLinesPerSegment;
 
-            for (let j = 1; j < totalLines; j++) {
-                // Check if this is a major line (every linesPerMajorSegment-th line)
-                const isMajorLine = j % linesPerMajorSegment === 0;
+            for (let lineIndex = 1; lineIndex < totalHorizontalLines; lineIndex++) {
+                // Check if this is a major line (every horizontalLinesPerSegment-th line)
+                const isMajorHorizontalLine = lineIndex % horizontalLinesPerSegment === 0;
 
-                // Calculate the original position index (j / linesPerMajorSegment * majorLineStep)
-                const originalPositionIndex = (j / linesPerMajorSegment) * majorLineStep;
+                // Calculate the original position index (lineIndex / horizontalLinesPerSegment * majorHorizontalStep)
+                const originalHorizontalIndex = (lineIndex / horizontalLinesPerSegment) * majorHorizontalStep;
 
-                // Only proceed if we haven't exceeded our original horizontalline count
-                if (originalPositionIndex >= horizontalline) continue;
+                // Only proceed if we haven't exceeded our original horizontalLineCount count
+                if (originalHorizontalIndex >= horizontalLineCount) continue;
 
-                const gridLineY = document.createElement("div");
-                gridLineY.className = "absolute bg-[rgb(128,128,128)]";
-                gridLineY.style.height = "1px";
-                gridLineY.style.width = "100%";
-                gridLineY.style.top = `${((originalPositionIndex / horizontalline) * 100).toFixed(3)}%`;
+                const horizontalGridLine = document.createElement("div");
+                horizontalGridLine.className = "absolute bg-[rgb(128,128,128)]";
+                horizontalGridLine.style.height = "1px";
+                horizontalGridLine.style.width = "100%";
+                horizontalGridLine.style.top = `${((originalHorizontalIndex / horizontalLineCount) * 100).toFixed(3)}%`;
 
-                gridLineY.style.opacity = isMajorLine
-                    ? (darkMode ? opacityDarkMajor : opacityLightMajor)
-                    : (darkMode ? opacityDarkMinor : opacityLightMinor);
+                horizontalGridLine.style.opacity = isMajorHorizontalLine
+                    ? (isDarkTheme ? darkMajorOpacity : lightMajorOpacity)
+                    : (isDarkTheme ? darkMinorOpacity : lightMinorOpacity);
 
-                canvasWrapper.appendChild(gridLineY);
-                if (isMajorLine) {
-                    const labelValue = Math.round(maxValue - (originalPositionIndex / horizontalline) * maxValue);
-                    if (labelValue % 200 === 0 || labelValue === 0 || labelValue === maxValue) {
-                        const label = document.createElement("div");
-                        label.className = "absolute text-[0.65rem] pointer-events-none";
-                        label.style.left = "4px";
-                        label.style.top = `${((originalPositionIndex / horizontalline) * 100).toFixed(3)}%`;
-                        label.style.transform = "translateY(-50%)";
-                        label.style.color = darkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)";
-                        label.textContent = labelValue.toString();
-                        canvasWrapper.appendChild(label);
+                gridWrapper.appendChild(horizontalGridLine);
+                if (isMajorHorizontalLine) {
+                    const labelValue = Math.round(maximumValue - (originalHorizontalIndex / horizontalLineCount) * maximumValue);
+                    if (labelValue % 200 === 0 || labelValue === 0 || labelValue === maximumValue) {
+                        const valueLabel = document.createElement("div");
+                        valueLabel.className = "absolute text-[0.65rem] pointer-events-none";
+                        valueLabel.style.left = "4px";
+                        valueLabel.style.top = `${((originalHorizontalIndex / horizontalLineCount) * 100).toFixed(3)}%`;
+                        valueLabel.style.transform = "translateY(-50%)";
+                        valueLabel.style.color = isDarkTheme ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)";
+                        valueLabel.textContent = labelValue.toString();
+                        gridWrapper.appendChild(valueLabel);
                     }
                 }
             }
 
-            containerRef.current.appendChild(canvasWrapper);
-        }, [darkMode]);
-        createGridLines();
+            containerElementRef.current.appendChild(gridWrapper);
+        }, [isDarkTheme]);
+        
+        generateGridLines();
+        
         useEffect(() => {
-            const canvas = canvasRef.current!;
-            const resize = () => {
-                const { width, height } = canvas.getBoundingClientRect();
+            const canvasElement = canvasElementRef.current!;
+            const handleResize = () => {
+                const { width, height } = canvasElement.getBoundingClientRect();
 
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = width * dpr;
-                canvas.height = height * dpr;
+                const devicePixelRatio = window.devicePixelRatio || 1;
+                canvasElement.width = width * devicePixelRatio;
+                canvasElement.height = height * devicePixelRatio;
 
-                const gl = canvas.getContext('webgl');
-                if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
-                plotRef.current?.update();
+                const webglContext = canvasElement.getContext('webgl');
+                if (webglContext) webglContext.viewport(0, 0, canvasElement.width, canvasElement.height);
+                webglPlotRef.current?.update();
             };
             // observe container resizes
-            const ro = new ResizeObserver(resize);
-            ro.observe(canvas);
+            const resizeObserver = new ResizeObserver(handleResize);
+            resizeObserver.observe(canvasElement);
             // **initial** sizing
-            resize();
+            handleResize();
 
             return () => {
-                ro.disconnect();
+                resizeObserver.disconnect();
             };
         }, []);
 
         useEffect(() => {
-            const handleResize = () => {
-                createGridLines();
-
+            const handleWindowResize = () => {
+                generateGridLines();
             };
-            window.addEventListener("resize", handleResize);
+            window.addEventListener("resize", handleWindowResize);
             return () => {
-                window.removeEventListener("resize", handleResize);
+                window.removeEventListener("resize", handleWindowResize);
             };
-        }, [createGridLines]);
-        // Update the initialization part in HRVPlotCanvas.tsx
+        }, [generateGridLines]);
+        
+        // Update the initialization part in HeartRateVariabilityCanvas.tsx
         useEffect(() => {
-            if (!canvasRef.current) return;
-            const canvas = canvasRef.current;
-            const plot = new WebglPlot(canvas);
-            const line = new WebglLine(hexToRGBA(color), numPoints);
+            if (!canvasElementRef.current) return;
+            const canvasElement = canvasElementRef.current;
+            const webglPlot = new WebglPlot(canvasElement);
+            const dataLine = new WebglLine(convertHexToRGBA(lineColor), dataPointCount);
 
             // space X from -1 to 1
-            line.lineSpaceX(-1, 2 / numPoints);
+            dataLine.lineSpaceX(-1, 2 / dataPointCount);
 
             // Initialize with 0 instead of NaN
-            for (let i = 0; i < line.numPoints; i++) {
-                line.setY(i, 0); // Changed from NaN to 0
+            for (let pointIndex = 0; pointIndex < dataLine.numPoints; pointIndex++) {
+                dataLine.setY(pointIndex, 0); // Changed from NaN to 0
             }
 
+            webglPlot.addLine(dataLine);
+            webglPlotRef.current = webglPlot;
+            plotLineRef.current = dataLine;
+            dataIndexRef.current = 0;
 
-            plot.addLine(line);
-            plotRef.current = plot;
-            lineRef.current = line;
-            sweepRef.current = 0;
-
-            plot.update();
+            webglPlot.update();
 
             return () => {
-                plotRef.current = null;
-                lineRef.current = null;
+                webglPlotRef.current = null;
+                plotLineRef.current = null;
             };
-        }, [numPoints, color]);
-
+        }, [dataPointCount, lineColor]);
 
         return (
-            <div ref={containerRef} className="relative w-full h-full">
-
+            <div ref={containerElementRef} className="relative w-full h-full">
                 <canvas
-                    ref={canvasRef}
+                    ref={canvasElementRef}
                     style={{ width: '100%', height: '100%' }}
                 />
             </div>
@@ -233,6 +233,6 @@ const HRVPlotCanvas = forwardRef<HRVPlotCanvasHandle, Props>(
     }
 );
 
-HRVPlotCanvas.displayName = 'HRVPlotCanvas';
+HeartRateVariabilityCanvas.displayName = 'HeartRateVariabilityCanvas';
 
-export default HRVPlotCanvas;
+export default HeartRateVariabilityCanvas;

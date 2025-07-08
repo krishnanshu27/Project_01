@@ -1,8 +1,9 @@
-'Use strict';
+'use strict';
 // components/StateIndicator.tsx
 import React from "react";
+import { cn } from "@/lib/utils";
 
-const icons = {
+const emotionIcons = {
   stressed: "😰",
   relaxed: "😌",
   happy: "😄",
@@ -12,28 +13,34 @@ const icons = {
   no_data: "⏳"
 };
 
-const colors = {
-  stressed: " text-red-800",
-  relaxed: " text-blue-800",
-  happy: " text-green-800",
-  focused: " text-yellow-800",
-  neutral: " text-gray-800",
-  mild_stress: " text-orange-800",
-  no_data: " text-white animate-pulse"
+const emotionStyles = {
+  stressed: "text-red-800",
+  relaxed: "text-blue-800",
+  happy: "text-green-800",
+  focused: "text-yellow-800",
+  neutral: "text-gray-800",
+  mild_stress: "text-orange-800",
+  no_data: "text-white animate-pulse"
 };
 
-export type State = keyof typeof icons;
+export type EmotionalState = keyof typeof emotionIcons;
 
-export function StateIndicator({ state }: { state: State }) {
-  const displayText = state === "no_data" ? "Analyzing..." : state.replace("_", " ");
+interface MoodDisplayProps {
+  state: EmotionalState;
+}
+
+export function MoodDisplay({ state }: MoodDisplayProps) {
+  const formattedLabel = state === "no_data" ? "Analyzing..." : state.replace("_", " ");
   
   return (
-    <div className={`px-2 rounded-lg flex items-center space-x-2 ${colors[state]}`}>
-      <span className="">{icons[state]}</span>
+    <div className={cn(
+      "px-2 rounded-lg flex items-center space-x-2",
+      emotionStyles[state]
+    )}>
+      <span className="">{emotionIcons[state]}</span>
       <span className="font-semibold capitalize text-[0.3em] sm:text-[0.4em] md:text-[0.8em]">
-        {displayText}
+        {formattedLabel}
       </span>
     </div>
   );
 }
-

@@ -22,13 +22,12 @@ import { useBleStream as useBluetoothStream } from '../components/Bledata';
 import WebglPlotCanvas from '../components/WebglPlotCanvas';
 
 import { WebglPlotCanvasHandle as PlotCanvasHandle } from "../components/WebglPlotCanvas";
-import HRVPlotCanvas, { HRVPlotCanvasHandle as HRVCanvasHandle } from '@/components/Hrvwebglplot'
-import { StateIndicator as MentalStateIndicator, State as MentalState } from "@/components/StateIndicator";
+import HeartRateVariabilityCanvas, { HeartRateVariabilityHandle as HRVCanvasHandle } from '@/components/Hrvwebglplot'
+import { MoodDisplay, EmotionalState } from "./StateIndicator";
 import MeditationWaveform from "../components/MeditationWaveform";
 import { predictState as predictMentalState } from "@/lib/stateClassifier";
 import { useRouter as useLocalRouter } from 'next/navigation';
 import { MeditationSession as MindSession } from '../components/MeditationSession';
-import MotivationalQuoteCard from './QuoteCard';
 import UILink from "next/link";
 
 
@@ -45,8 +44,8 @@ export default function BrainSignalVisualizer() {
     const bandWorkerRef = useLocalRef<Worker | null>(null);
     const dataWorkerRef = useLocalRef<Worker | null>(null);
     const [heartbeatActive, setHeartbeatActive] = useLocalState(false);
-    const [currentMentalState, setCurrentMentalState] = useLocalState<MentalState>("no_data");
-    const stateHistoryRef = useLocalRef<{ state: MentalState; timestamp: number }[]>([]);
+    const [currentMentalState, setCurrentMentalState] = useLocalState<EmotionalState>("no_data");
+    const stateHistoryRef = useLocalRef<{ state: EmotionalState; timestamp: number }[]>([]);
     const lastMentalStateUpdateRef = useLocalRef<number>(0);
     const connectionStartTimeRef = useLocalRef<number | null>(null);
     const [sessionSummary, setSessionSummary] = useLocalState<{
@@ -282,7 +281,7 @@ export default function BrainSignalVisualizer() {
             const { bpm, high, low, avg, hrv, hrvHigh, hrvLow, hrvAvg, sdnn, rmssd, pnn50 } = e.data;
 
             if (hrv !== null && !isNaN(hrv)) {
-                hrvCanvasRef.current?.updateHRV(hrv);
+                hrvCanvasRef.current?.addHRVData(hrv);
             }
 
             if (bpm !== null) {
@@ -343,7 +342,7 @@ export default function BrainSignalVisualizer() {
 
                     const dominantState = Object.entries(stateCounts).reduce((a, b) =>
                         a[1] > b[1] ? a : b
-                    )[0] as MentalState;
+                    )[0] as EmotionalState;
 
                     setCurrentMentalState(dominantState);
                     lastMentalStateUpdateRef.current = now;
@@ -527,7 +526,7 @@ export default function BrainSignalVisualizer() {
                                 </UICardHeader>
                                 <UICardContent>
                                     <div className="text-2xl font-bold">
-                                        <MentalStateIndicator state={currentMentalState} />
+                                       <MoodDisplay state={currentMentalState} />
                                     </div>
                                     <p className="text-xs text-muted-foreground">
                                         Current state

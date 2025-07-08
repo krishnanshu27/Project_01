@@ -1,8 +1,8 @@
 'use client'
-import React, { useRef, useEffect,useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Award } from 'lucide-react';
 
-interface BrainwaveSample {
+interface NeuralDataPoint {
   timestamp?: number;
   alpha: number;
   beta: number;
@@ -10,52 +10,54 @@ interface BrainwaveSample {
   delta?: number;
 }
 
-interface Props {
-  data: BrainwaveSample[];
+interface ComponentProps {
+  data: NeuralDataPoint[];
   sessionDuration: number;
   darkMode?: boolean;
   className?: string;
 }
 
-const MeditationSessionAnalyzer: React.FC<Props> = ({
+const MeditationWaveformVisualizer: React.FC<ComponentProps> = ({
   data,
   sessionDuration,
   darkMode = true,
   className = ''
 }) => {
-  const canvasReference = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const computeSessionMetrics = () => {
+  const calculateAnalytics = () => {
     if (!data.length) return {
-      averageAlpha: 0,
-      averageBeta: 0,
-      averageTheta: 0,
-      averageDelta: 0,
-      deepestTheta: 0,
-      consistency: 0,
-      flowState: 0,
-      statePercentages: {
+      meanAlpha: 0,
+      meanBeta: 0,
+      meanTheta: 0,
+      meanDelta: 0,
+      peakTheta: 0,
+      stability: 0,
+      flowIndex: 0,
+      distributionRatios: {
         Relaxed: 0,
         Focused: 0,
         'Deep Meditation': 0,
         Drowsy: 0
       },
-      mostFrequent: 'Relaxed',
-      phases: []
+      dominantState: 'Relaxed',
+      segments: []
     };
 
-    // Calculate averages
-    const averageAlpha = data.reduce((sum, s) => sum + s.alpha, 0) / data.length;
-    const averageBeta = data.reduce((sum, s) => sum + s.beta, 0) / data.length;
-    const averageTheta = data.reduce((sum, s) => sum + s.theta, 0) / data.length;
-    const averageDelta = data.reduce((sum, s) => sum + (s.delta ?? 0), 0) / data.length;
+    // Calculate means
+    const meanAlpha = data.reduce((acc, sample) => acc + sample.alpha, 0) / data.length;
+    const meanBeta = data.reduce((acc, sample) => acc + sample.beta, 0) / data.length;
+    const meanTheta = data.reduce((acc, sample) => acc + sample.theta, 0) / data.length;
+    const meanDelta = data.reduce((acc, sample) => acc + (sample.delta ?? 0), 0) / data.length;
 
     // Consistent state classification logic
-    const classifyMentalState = (alpha: number, beta: number, theta: number, delta: number) => {
-      const values = { alpha, beta, theta, delta };
-      const maxKey = Object.keys(values).reduce((a, b) => values[a as keyof typeof values] > values[b as keyof typeof values] ? a : b);
+    const determineBrainState = (alphaVal: number, betaVal: number, thetaVal: number, deltaVal: number) => {
+      const waveValues = { alpha: alphaVal, beta: betaVal, theta: thetaVal, delta: deltaVal };
+      const dominantWave = Object.keys(waveValues).reduce((prev, curr) => 
+        waveValues[prev as keyof typeof waveValues] > waveValues[curr as keyof typeof waveValues] ? prev : curr
+      );
 
-      switch (maxKey) {
+      switch (dominantWave) {
         case 'alpha': return 'Relaxed';
         case 'beta': return 'Focused';
         case 'theta': return 'Deep Meditation';
@@ -65,26 +67,26 @@ const MeditationSessionAnalyzer: React.FC<Props> = ({
     };
 
     // Calculate state percentages for entire session
-    const stateCounts = { Relaxed: 0, Focused: 0, 'Deep Meditation': 0, Drowsy: 0 };
+    const stateCounter = { Relaxed: 0, Focused: 0, 'Deep Meditation': 0, Drowsy: 0 };
 
-    data.forEach(sample => {
-      const state = classifyMentalState(sample.alpha, sample.beta, sample.theta, sample.delta ?? 0);
-      stateCounts[state]++;
+    data.forEach(dataPoint => {
+      const currentState = determineBrainState(dataPoint.alpha, dataPoint.beta, dataPoint.theta, dataPoint.delta ?? 0);
+      stateCounter[currentState]++;
     });
 
-    const totalSamples = data.length;
-    const statePercentages = {
-      Relaxed: Math.round((stateCounts.Relaxed / totalSamples) * 100),
-      Focused: Math.round((stateCounts.Focused / totalSamples) * 100),
-      'Meditation': Math.round((stateCounts['Deep Meditation'] / totalSamples) * 100),
-      Drowsy: Math.round((stateCounts.Drowsy / totalSamples) * 100)
+    const totalDataPoints = data.length;
+    const distributionRatios = {
+      Relaxed: Math.round((stateCounter.Relaxed / totalDataPoints) * 100),
+      Focused: Math.round((stateCounter.Focused / totalDataPoints) * 100),
+      'Meditation': Math.round((stateCounter['Deep Meditation'] / totalDataPoints) * 100),
+      Drowsy: Math.round((stateCounter.Drowsy / totalDataPoints) * 100)
     };
 
     // Most frequent state
-    const mostFrequent = Object.entries(stateCounts).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+    const dominantState = Object.entries(stateCounter).reduce((prev, curr) => prev[1] > curr[1] ? prev : curr)[0];
 
-    // Create exactly 12 phases
-    const phases: Array<{
+    // Create exactly 12 segments
+    const segments: Array<{
       phase: string;
       alpha: number;
       theta: number;
@@ -93,166 +95,164 @@ const MeditationSessionAnalyzer: React.FC<Props> = ({
       stateHeights: { relaxed: number; focused: number; deep: number; drowsy: number };
     }> = [];
 
-    const numberOfPhases = 12;
-    const phaseLength = Math.ceil(data.length / numberOfPhases);
+    const segmentCount = 12;
+    const segmentSize = Math.ceil(data.length / segmentCount);
 
-    for (let i = 0; i < numberOfPhases; i++) {
-      const startIdx = i * phaseLength;
-      const endIdx = Math.min(startIdx + phaseLength, data.length);
-      const segment = data.slice(startIdx, endIdx);
+    for (let idx = 0; idx < segmentCount; idx++) {
+      const startIndex = idx * segmentSize;
+      const endIndex = Math.min(startIndex + segmentSize, data.length);
+      const segmentData = data.slice(startIndex, endIndex);
 
-      if (segment.length === 0) continue;
+      if (segmentData.length === 0) continue;
 
-      const avgA = segment.reduce((sum, s) => sum + s.alpha, 0) / segment.length;
-      const avgB = segment.reduce((sum, s) => sum + s.beta, 0) / segment.length;
-      const avgT = segment.reduce((sum, s) => sum + s.theta, 0) / segment.length;
-      const avgD = segment.reduce((sum, s) => sum + (s.delta ?? 0), 0) / segment.length;
+      const avgAlpha = segmentData.reduce((acc, sample) => acc + sample.alpha, 0) / segmentData.length;
+      const avgBeta = segmentData.reduce((acc, sample) => acc + sample.beta, 0) / segmentData.length;
+      const avgTheta = segmentData.reduce((acc, sample) => acc + sample.theta, 0) / segmentData.length;
+      const avgDelta = segmentData.reduce((acc, sample) => acc + (sample.delta ?? 0), 0) / segmentData.length;
 
-      // Determine dominant phase
-      const phaseName = classifyMentalState(avgA, avgB, avgT, avgD).toLowerCase().replace(' ', '');
+      // Determine dominant segment
+      const segmentType = determineBrainState(avgAlpha, avgBeta, avgTheta, avgDelta).toLowerCase().replace(' ', '');
 
       // Calculate heights for stacked bars (normalize to 0-1 range)
-      const total = avgA + avgB + avgT + avgD;
-      const stateHeights = {
-        relaxed: total > 0 ? avgA / total : 0,
-        focused: total > 0 ? avgB / total : 0,
-        deep: total > 0 ? avgT / total : 0,
-        drowsy: total > 0 ? avgD / total : 0
+      const totalWaveActivity = avgAlpha + avgBeta + avgTheta + avgDelta;
+      const normalizedHeights = {
+        relaxed: totalWaveActivity > 0 ? avgAlpha / totalWaveActivity : 0,
+        focused: totalWaveActivity > 0 ? avgBeta / totalWaveActivity : 0,
+        deep: totalWaveActivity > 0 ? avgTheta / totalWaveActivity : 0,
+        drowsy: totalWaveActivity > 0 ? avgDelta / totalWaveActivity : 0
       };
 
-      phases.push({
-        phase: phaseName,
-        alpha: avgA,
-        theta: avgT,
-        beta: avgB,
-        delta: avgD,
-        stateHeights
+      segments.push({
+        phase: segmentType,
+        alpha: avgAlpha,
+        theta: avgTheta,
+        beta: avgBeta,
+        delta: avgDelta,
+        stateHeights: normalizedHeights
       });
     }
 
     return {
-      averageAlpha,
-      averageBeta,
-      averageTheta,
-      averageDelta,
-      statePercentages,
-      mostFrequent,
-      phases
+      meanAlpha,
+      meanBeta,
+      meanTheta,
+      meanDelta,
+      distributionRatios,
+      dominantState,
+      segments
     };
   };
 
+  const analyticsData = calculateAnalytics();
+  const sessionScore = Math.min(100, Math.round((analyticsData.flowIndex ?? 0) * 100));
 
-  const metrics = computeSessionMetrics();
-  const meditationScore = Math.min(100, Math.round((metrics.flowState ?? 0) * 100));
-
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
 
   // Set up resize observer to handle container size changes
   useEffect(() => {
-    const canvas = canvasReference.current;
-    if (!canvas) return;
+    const canvasElement = canvasRef.current;
+    if (!canvasElement) return;
 
-    const resizeObserver = new ResizeObserver(entries => {
+    const dimensionObserver = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect;
-      setCanvasSize({ width, height });
+      setCanvasDimensions({ width, height });
     });
 
-    resizeObserver.observe(canvas.parentElement!);
+    dimensionObserver.observe(canvasElement.parentElement!);
 
-    return () => resizeObserver.disconnect();
+    return () => dimensionObserver.disconnect();
   }, []);
+
   // Replace the useEffect canvas rendering with this:
-  
   useEffect(() => {
-    const canvas = canvasReference.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx || !data.length || canvasSize.width === 0) return;
+    const canvasElement = canvasRef.current;
+    const renderContext = canvasElement?.getContext('2d');
+    if (!canvasElement || !renderContext || !data.length || canvasDimensions.width === 0) return;
 
     // Get device pixel ratio for crisp rendering on high-DPI displays
-    const dpr = window.devicePixelRatio || 1;
+    const pixelRatio = window.devicePixelRatio || 1;
     
     // Set canvas resolution to match display size
-    canvas.width = canvasSize.width * dpr;
-    canvas.height = canvasSize.height * dpr;
+    canvasElement.width = canvasDimensions.width * pixelRatio;
+    canvasElement.height = canvasDimensions.height * pixelRatio;
     
     // Scale the context to account for the higher resolution
-    ctx.scale(dpr, dpr);
+    renderContext.scale(pixelRatio, pixelRatio);
 
-    const width = canvasSize.width;
-    const height = canvasSize.height;
-    const padding = 20;
-    const barWidth = (width - padding * 2) / 12; // Fixed 12 phases
-    const maxBarHeight = height - padding * 2;
+    const canvasWidth = canvasDimensions.width;
+    const canvasHeight = canvasDimensions.height;
+    const chartPadding = 20;
+    const columnWidth = (canvasWidth - chartPadding * 2) / 12; // Fixed 12 segments
+    const maxColumnHeight = canvasHeight - chartPadding * 2;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    renderContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
     // Background solid color
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-    ctx.fillRect(0, 0, width, height);
+    renderContext.fillStyle = 'rgba(15, 23, 42, 0.7)';
+    renderContext.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    const stateColors = {
+    const waveStateColors = {
       relaxed: '#34d399',
       focused: '#f97316',
       deep: '#6366f1',
       drowsy: '#9ca3af'
     };
 
-    metrics.phases.forEach((phase, i) => {
-      const x = padding + i * barWidth;
-      const baseY = height - padding;
+    analyticsData.segments.forEach((segment, segmentIndex) => {
+      const xPosition = chartPadding + segmentIndex * columnWidth;
+      const baseYPosition = canvasHeight - chartPadding;
 
       // Draw stacked horizontal bars
-      let currentY = baseY;
-      const states = ['drowsy', 'deep', 'focused', 'relaxed'] as const;
+      let currentYPosition = baseYPosition;
+      const waveStates = ['drowsy', 'deep', 'focused', 'relaxed'] as const;
 
-      states.forEach((state, stateIndex) => {
-        const stateHeight = phase.stateHeights[state] * maxBarHeight * 0.8;
+      waveStates.forEach((waveState, stateIndex) => {
+        const barHeight = segment.stateHeights[waveState] * maxColumnHeight * 0.8;
 
-        if (stateHeight > 2) {
-          ctx.fillStyle = stateColors[state];
-          ctx.beginPath();
-          ctx.roundRect(x + 2, currentY - stateHeight, barWidth - 4, stateHeight, 2);
-          ctx.fill();
+        if (barHeight > 2) {
+          renderContext.fillStyle = waveStateColors[waveState];
+          renderContext.beginPath();
+          renderContext.roundRect(xPosition + 2, currentYPosition - barHeight, columnWidth - 4, barHeight, 2);
+          renderContext.fill();
 
-          currentY -= stateHeight;
+          currentYPosition -= barHeight;
         }
       });
     });
 
     // Time labels
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.6)';
-    ctx.font = '14px system-ui';
-    ctx.textAlign = 'center';
+    renderContext.fillStyle = 'rgba(148, 163, 184, 0.6)';
+    renderContext.font = '14px system-ui';
+    renderContext.textAlign = 'center';
     
-    let actualSessionDurationSeconds: number;
+    let actualDurationInSeconds: number;
     if (data.length > 1 && data[0].timestamp && data[data.length - 1].timestamp) {
-      actualSessionDurationSeconds = (data[data.length - 1].timestamp! - data[0].timestamp!) / 1000;
+      actualDurationInSeconds = (data[data.length - 1].timestamp! - data[0].timestamp!) / 1000;
     } else {
-      actualSessionDurationSeconds = sessionDuration * 60;
+      actualDurationInSeconds = sessionDuration * 60;
     }
 
-    const timePerPhase = actualSessionDurationSeconds / 12;
+    const timePerSegment = actualDurationInSeconds / 12;
 
-    for (let i = 0; i <= 12; i += 3) {
-      const x = padding + (width - padding * 2) * (i / 12);
-      const timeInSeconds = Math.round(timePerPhase * i);
+    for (let timeIndex = 0; timeIndex <= 12; timeIndex += 3) {
+      const xPos = chartPadding + (canvasWidth - chartPadding * 2) * (timeIndex / 12);
+      const timeInSec = Math.round(timePerSegment * timeIndex);
 
-      let timeLabel: string;
-      if (timeInSeconds < 60) {
-        timeLabel = `${timeInSeconds}s`;
+      let timeDisplay: string;
+      if (timeInSec < 60) {
+        timeDisplay = `${timeInSec}s`;
       } else {
-        const minutes = Math.floor(timeInSeconds / 60);
-        const seconds = timeInSeconds % 60;
-        timeLabel = seconds === 0 ? `${minutes}m` : `${minutes}m${seconds}s`;
+        const mins = Math.floor(timeInSec / 60);
+        const secs = timeInSec % 60;
+        timeDisplay = secs === 0 ? `${mins}m` : `${mins}m${secs}s`;
       }
 
-      ctx.fillText(timeLabel, x, height - 5);
+      renderContext.fillText(timeDisplay, xPos, canvasHeight - 5);
     }
-  }, [data, metrics.phases, sessionDuration, canvasSize]);
+  }, [data, analyticsData.segments, sessionDuration, canvasDimensions]);
 
-
-  const getPhaseColor = (phase: string) => {
-    switch (phase.toLowerCase()) {
+  const getStateColorClass = (stateType: string) => {
+    switch (stateType.toLowerCase()) {
       case 'relaxed': return 'bg-emerald-400';  // closest to mint green (#34d399)
       case 'focused': return 'bg-orange-500';   // close to vibrant orange (#f97316)
       case 'meditation': return 'bg-indigo-500';// close to electric blue (#6366f1)
@@ -261,20 +261,18 @@ const MeditationSessionAnalyzer: React.FC<Props> = ({
     }
   };
 
-
-
   return (
-    <div className={`w-full  h-full  bg-slate-800 rounded-sm overflow-hidden shadow-2xl ${className}`}>
- <div className="p-6" style={{ padding: '10px' }}>
-        {/* Phases Canvas */}
+    <div className={`w-full h-full bg-slate-800 rounded-sm overflow-hidden shadow-2xl ${className}`}>
+      <div className="p-6" style={{ padding: '10px' }}>
+        {/* Segments Canvas */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2" style={{ padding: '10px' }}>
             <span className="text-sm text-slate-400">Session Phases</span>
-            <span className="text-xs text-slate-500">{metrics.phases.length} phases detected</span>
+            <span className="text-xs text-slate-500">{analyticsData.segments.length} phases detected</span>
           </div>
           <div className="w-full h-[120px]">
             <canvas 
-              ref={canvasReference} 
+              ref={canvasRef} 
               className="w-full h-full rounded-xl"
               style={{
                 width: '100%',
@@ -286,13 +284,11 @@ const MeditationSessionAnalyzer: React.FC<Props> = ({
         </div>
         {/* Meditation Breakdown */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6 h-20">
-
-          {Object.entries(metrics.statePercentages).map(([state, pct]) => (
-            <div key={state} className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${getPhaseColor(state)}`}></div>
-              <div className="text-xs text-slate-300">{state}</div>
+          {Object.entries(analyticsData.distributionRatios).map(([stateType, percentage]) => (
+            <div key={stateType} className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${getStateColorClass(stateType)}`}></div>
+              <div className="text-xs text-slate-300">{stateType}</div>
             </div>
-
           ))}
         </div>
 
@@ -303,17 +299,16 @@ const MeditationSessionAnalyzer: React.FC<Props> = ({
             <span className="text-sm font-medium text-emerald-300">Session Insights</span>
           </div>
           <p className="text-xs text-slate-300 leading-relaxed">
-            {meditationScore >= 80
+            {sessionScore >= 80
               ? "Outstanding session! You maintained deep meditative states with excellent mind control."
-              : meditationScore >= 60
+              : sessionScore >= 60
                 ? "Good progress! Your relaxation response is developing well. Try extending session time."
                 : "Keep practicing! Focus on breathing techniques to improve alpha wave consistency."}
           </p>
         </div>
-
       </div>
     </div>
   );
 };
 
-export default MeditationSessionAnalyzer;
+export default MeditationWaveformVisualizer;
