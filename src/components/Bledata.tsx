@@ -2,158 +2,150 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+const BLUETOOTH_SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+const DATA_CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+const CONTROL_CHARACTERISTIC_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';
 
-const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-const DATA_CHAR_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-const CONTROL_CHAR_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';
+const INDIVIDUAL_SAMPLE_LENGTH = 7;
+const DATA_BLOCK_COUNT = 10;
+const COMPLETE_PACKET_LENGTH = INDIVIDUAL_SAMPLE_LENGTH * DATA_BLOCK_COUNT;
 
-const SINGLE_SAMPLE_LEN = 7;
-const BLOCK_COUNT = 10;
-const NEW_PACKET_LEN = SINGLE_SAMPLE_LEN * BLOCK_COUNT;
+export function useBluetoothDataStream(dataStreamHandler?: (data: number[]) => void) {
 
-export function useBleStream(datastreamCallback?: (data: number[]) => void) {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
 
-  const [connected, setConnected] = useState(false);
-  const [streaming, setStreaming] = useState(false);
+  const bluetoothDeviceRef = useRef<BluetoothDevice | null>(null);
+  const controlCharacteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
+  const dataCharacteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
+  let receivedSampleCount = 0;
 
-  const deviceRef = useRef<BluetoothDevice | null>(null);
-  const controlRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
-  const dataRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
-  let samplesReceived = 0;
+  const handleSampleData = useCallback((dataBuffer: DataView) => {
+    if (dataBuffer.byteLength !== INDIVIDUAL_SAMPLE_LENGTH) return;
 
-
-  const processSample = useCallback((dataView: DataView) => {
-    if (dataView.byteLength !== SINGLE_SAMPLE_LEN) return;
-
-    datastreamCallback?.([
-      dataView.getUint8(0),      // counter
-      dataView.getInt16(1, false), // raw0 (EEG 1)
-      dataView.getInt16(3, false), // raw1 (EEG 2)
-      dataView.getInt16(5, false)  // raw2 (ECG)
+    dataStreamHandler?.([
+      dataBuffer.getUint8(0),      // counter
+      dataBuffer.getInt16(1, false), // raw0 (EEG 1)
+      dataBuffer.getInt16(3, false), // raw1 (EEG 2)
+      dataBuffer.getInt16(5, false)  // raw2 (ECG)
     ]);
 
-  }, [datastreamCallback]);
+  }, [dataStreamHandler]);
 
-  const handleNotification = (event: Event) => {
-    const target = event.target as BluetoothRemoteGATTCharacteristic;
-    if (!target.value) return;
-    const value = target.value;
+  const processNotificationEvent = (event: Event) => {
+    const eventTarget = event.target as BluetoothRemoteGATTCharacteristic;
+    if (!eventTarget.value) return;
+    const receivedValue = eventTarget.value;
 
-    if (value.byteLength === NEW_PACKET_LEN) {
-      for (let i = 0; i < NEW_PACKET_LEN; i += SINGLE_SAMPLE_LEN) {
-        const sampleBuffer = value.buffer.slice(i, i + SINGLE_SAMPLE_LEN);
-        const sampleDataView = new DataView(sampleBuffer);
-        processSample(sampleDataView);
-        samplesReceived++;
-
+    if (receivedValue.byteLength === COMPLETE_PACKET_LENGTH) {
+      for (let byteIndex = 0; byteIndex < COMPLETE_PACKET_LENGTH; byteIndex += INDIVIDUAL_SAMPLE_LENGTH) {
+        const sampleDataBuffer = receivedValue.buffer.slice(byteIndex, byteIndex + INDIVIDUAL_SAMPLE_LENGTH);
+        const sampleDataView = new DataView(sampleDataBuffer);
+        handleSampleData(sampleDataView);
+        receivedSampleCount++;
       }
-    } else if (value.byteLength === SINGLE_SAMPLE_LEN) {
-      processSample(new DataView(value.buffer));
-      samplesReceived++;
-
+    } else if (receivedValue.byteLength === INDIVIDUAL_SAMPLE_LENGTH) {
+      handleSampleData(new DataView(receivedValue.buffer));
+      receivedSampleCount++;
     }
   };
 
-  const connect = async () => {
+  const establishConnection = async () => {
     try {
-      const device = await navigator.bluetooth.requestDevice({
+      const bluetoothDevice = await navigator.bluetooth.requestDevice({
         filters: [{ namePrefix: 'NPG' }],
-        optionalServices: [SERVICE_UUID],
+        optionalServices: [BLUETOOTH_SERVICE_UUID],
       });
-      deviceRef.current = device;
-      const server = await device.gatt!.connect();
-      const svc = await server.getPrimaryService(SERVICE_UUID);
-      controlRef.current = await svc.getCharacteristic(CONTROL_CHAR_UUID);
-      dataRef.current = await svc.getCharacteristic(DATA_CHAR_UUID);
-      setConnected(true);
+      bluetoothDeviceRef.current = bluetoothDevice;
+      const gattServer = await bluetoothDevice.gatt!.connect();
+      const bluetoothService = await gattServer.getPrimaryService(BLUETOOTH_SERVICE_UUID);
+      controlCharacteristicRef.current = await bluetoothService.getCharacteristic(CONTROL_CHARACTERISTIC_UUID);
+      dataCharacteristicRef.current = await bluetoothService.getCharacteristic(DATA_CHARACTERISTIC_UUID);
+      setIsConnected(true);
       setInterval(() => {
-      
-        if (samplesReceived === 0) {
-          disconnect();
+        if (receivedSampleCount === 0) {
+          terminateConnection();
           window.location.reload();
         }
-        samplesReceived = 0;
+        receivedSampleCount = 0;
       }, 1000);
       // Automatically send START command after successful connection
-      await start();
+      await initiateStreaming();
     } catch (error) {
-   
+      // Error handling can be added here if needed
     }
   };
 
-  const start = async () => {
-    if (!controlRef.current || !dataRef.current) return;
+  const initiateStreaming = async () => {
+    if (!controlCharacteristicRef.current || !dataCharacteristicRef.current) return;
     try {
-      await controlRef.current.writeValue(new TextEncoder().encode('START'));
-      await dataRef.current.startNotifications();
-      dataRef.current.addEventListener('characteristicvaluechanged', handleNotification);
-      setStreaming(true);
+      await controlCharacteristicRef.current.writeValue(new TextEncoder().encode('START'));
+      await dataCharacteristicRef.current.startNotifications();
+      dataCharacteristicRef.current.addEventListener('characteristicvaluechanged', processNotificationEvent);
+      setIsStreaming(true);
     } catch (error) {
       console.error("Failed to start:", error);
     }
   };
 
   // Stop notifications and streaming
-  const stop = async () => {
-    dataRef.current?.removeEventListener('characteristicvaluechanged', handleNotification);
+  const haltStreaming = async () => {
+    dataCharacteristicRef.current?.removeEventListener('characteristicvaluechanged', processNotificationEvent);
 
     try {
-      if (dataRef.current?.service.device.gatt?.connected) {
-        await dataRef.current.stopNotifications();
+      if (dataCharacteristicRef.current?.service.device.gatt?.connected) {
+        await dataCharacteristicRef.current.stopNotifications();
       }
     } catch (err) {
       console.warn('stopNotifications failed:', err);
     }
 
     try {
-      if (controlRef.current?.service.device.gatt?.connected) {
-        await controlRef.current.writeValue(new TextEncoder().encode('STOP'));
+      if (controlCharacteristicRef.current?.service.device.gatt?.connected) {
+        await controlCharacteristicRef.current.writeValue(new TextEncoder().encode('STOP'));
       }
     } catch (err) {
       console.warn('write STOP failed:', err);
     }
 
-    setStreaming(false);
+    setIsStreaming(false);
   };
 
   // Disconnect and clean up everything
-  const disconnect = async () => {
-    if (streaming && deviceRef.current?.gatt?.connected) {
-      await stop();
-      deviceRef.current.gatt.disconnect();
+  const terminateConnection = async () => {
+    if (isStreaming && bluetoothDeviceRef.current?.gatt?.connected) {
+      await haltStreaming();
+      bluetoothDeviceRef.current.gatt.disconnect();
     }
 
     // State update triggers clearCanvas via effect
-    setStreaming(false);
-    setConnected(false);
+    setIsStreaming(false);
+    setIsConnected(false);
     window.location.reload();
-
   };
 
   // Handle unexpected disconnections
   useEffect(() => {
-    const device = deviceRef.current;
-    const onDisconnect = () => {
+    const bluetoothDevice = bluetoothDeviceRef.current;
+    const handleDisconnectionEvent = () => {
       console.warn('Device unexpectedly disconnected.');
-      setConnected(false);
-      setStreaming(false);
+      setIsConnected(false);
+      setIsStreaming(false);
     };
 
-    device?.addEventListener('gattserverdisconnected', onDisconnect);
+    bluetoothDevice?.addEventListener('gattserverdisconnected', handleDisconnectionEvent);
     return () => {
-      device?.removeEventListener('gattserverdisconnected', onDisconnect);
-      disconnect();
+      bluetoothDevice?.removeEventListener('gattserverdisconnected', handleDisconnectionEvent);
+      terminateConnection();
     };
   }, []);
 
   return {
-    connected,
-    streaming,
-    connect,
-    start,
-    stop,
-    disconnect,
-
+    connected: isConnected,
+    streaming: isStreaming,
+    connect: establishConnection,
+    start: initiateStreaming,
+    stop: haltStreaming,
+    disconnect: terminateConnection,
   };
-
 }

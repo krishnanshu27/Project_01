@@ -14,8 +14,8 @@ export type WebglPlotCanvasHandle = {
   /** Get the canvas element */
   getCanvas: () => HTMLCanvasElement | null
 
-  updateData: (channeldata: number[]) => void 
-  gridnumber:number
+  updateData: (channeldata: number[]) => void
+  gridnumber: number
 }
 
 function hexToColorRGBA(hex: string): ColorRGBA {
@@ -31,21 +31,21 @@ type Props = {
   channels: number[]
   colors: Record<number, string>
   gridnumber: number
- 
+
 }
 
- const WebglPlotCanvas = forwardRef<WebglPlotCanvasHandle, Props>(
-  ({ channels, colors,gridnumber }, ref) => {
+const WebglPlotCanvas = forwardRef<WebglPlotCanvasHandle, Props>(
+  ({ channels, colors, gridnumber }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const wglpRef = useRef<WebglPlot | null>(null)
     const linesRef = useRef<Record<string, WebglLine>>({})
     const sweepRef = useRef(0)
     const containerRef = useRef<HTMLDivElement>(null)
-       // Constants (could be props if needed)
-       const samplingRate = 500;
-       const selectedBits = 10;
-       const theme = 'dark';
-       const gridCreatedRef = useRef(false);// Track if grid has been created
+    // Constants (could be props if needed)
+    const samplingRate = 500;
+    const selectedBits = 10;
+    const theme = 'dark';
+    const gridCreatedRef = useRef(false);// Track if grid has been created
 
     // Create grid lines (only once)
     const createGridLines = () => {
@@ -114,7 +114,7 @@ type Props = {
 
           wglpRef.current?.update();
         },
-        gridnumber:gridnumber
+        gridnumber: gridnumber
       }),
       [channels] // should depend on channels
     )
@@ -141,7 +141,7 @@ type Props = {
       channels.forEach((ch: number) => {
         const line = new WebglLine(hexToColorRGBA(colors[ch]), 2000)
         line.lineSpaceX(-1, 2 / 2000)
-        
+
         // Initialize with some default data (sin wave for example)
         for (let i = 0; i < line.numPoints; i++) {
           const x = (i / line.numPoints) * 4 * Math.PI
@@ -156,17 +156,17 @@ type Props = {
       sweepRef.current = 0
       createGridLines()
     }
-   useEffect(() => {
-            const handleResize = () => {
-                createGridLines();
-                initWebglPlot();
+    useEffect(() => {
+      const handleResize = () => {
+        createGridLines();
+        initWebglPlot();
 
-            };
-            window.addEventListener("resize", handleResize);
-            return () => {
-                window.removeEventListener("resize", handleResize);
-            };
-        }, [createGridLines,initWebglPlot]);
+      };
+      window.addEventListener("resize", handleResize);
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    }, [createGridLines, initWebglPlot]);
     // 1) Initial setup effect
     useEffect(() => {
       initWebglPlot()
@@ -197,11 +197,11 @@ type Props = {
     return (
       <div ref={containerRef} className="relative w-full h-full">
 
-      <canvas
-        ref={canvasRef}
-        style={{ width: '100%', height: '100%', display: 'block' }}
-      />
-            </div>
+        <canvas
+          ref={canvasRef}
+          style={{ width: '100%', height: '100%', display: 'block' }}
+        />
+      </div>
 
     )
   }

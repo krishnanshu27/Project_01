@@ -18,7 +18,7 @@ import { ScrollArea as UIScrollArea } from '@/components/ui/scroll-area';
 import { Tabs as UITabs, TabsContent as UITabsContent, TabsList as UITabsList, TabsTrigger as UITabsTrigger } from '@/components/ui/tabs';
 import { Alert as UIAlert, AlertDescription as UIAlertDescription } from '@/components/ui/alert';
 
-import { useBleStream as useBluetoothStream } from '../components/Bledata';
+import { useBluetoothDataStream as useBluetoothStream } from '../components/Bledata';
 import WebglPlotCanvas from '../components/WebglPlotCanvas';
 
 import { WebglPlotCanvasHandle as PlotCanvasHandle } from "../components/WebglPlotCanvas";
