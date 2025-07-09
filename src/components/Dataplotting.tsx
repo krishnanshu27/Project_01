@@ -7,16 +7,11 @@ import { cn as classNames } from "@/lib/utils";
 
 import {
     Activity as ActivityIcon, Brain as BrainIcon, Heart as HeartIcon, Moon as MoonIcon, Sun as SunIcon, Plug as PlugIcon, PlugZap as PlugZapIcon, Zap as ZapIcon, Clock as ClockIcon, Target as TargetIcon,
-    Signal as SignalIcon, TrendingUp as TrendingUpIcon, ActivitySquare as ActivitySquareIcon, Gauge as GaugeIcon, BarChart3 as BarChartIcon, BarChart3, Waves, Brain, Heart, Activity, Clock, Target, Zap
+    Signal as SignalIcon, TrendingUp as TrendingUpIcon, ActivitySquare as ActivitySquareIcon, Gauge as GaugeIcon, BarChart3 as BarChartIcon, BarChart3, Waves, Brain, Heart, Activity, Clock, Target, Zap, RotateCcw, Wifi, WifiOff, Maximize2, Settings, Download, Share2, Sun, Moon, Signal
 } from 'lucide-react';
 import { Card as UICard, CardContent as UICardContent, CardDescription as UICardDescription, CardHeader as UICardHeader, CardTitle as UICardTitle } from '@/components/ui/card';
-import { Dialog as UIDialog, DialogContent as UIDialogContent, DialogHeader as UIDialogHeader, DialogTitle as UIDialogTitle, DialogTrigger as UIDialogTrigger } from '@/components/ui/dialog';
-import { Badge as UIBadge } from '@/components/ui/badge';
-import { Progress as UIProgress } from '@/components/ui/progress';
-import { Separator as UISeparator } from '@/components/ui/separator';
-import { ScrollArea as UIScrollArea } from '@/components/ui/scroll-area';
+
 import { Tabs as UITabs, TabsContent as UITabsContent, TabsList as UITabsList, TabsTrigger as UITabsTrigger } from '@/components/ui/tabs';
-import { Alert as UIAlert, AlertDescription as UIAlertDescription } from '@/components/ui/alert';
 
 import { useBluetoothDataStream as useBluetoothStream } from '../components/Bledata';
 import WebglPlotCanvas from '../components/WebglPlotCanvas';
@@ -24,13 +19,8 @@ import WebglPlotCanvas from '../components/WebglPlotCanvas';
 import { WebglPlotCanvasHandle as PlotCanvasHandle } from "../components/WebglPlotCanvas";
 import HeartRateVariabilityCanvas, { HeartRateVariabilityHandle as HRVCanvasHandle } from '@/components/Hrvwebglplot'
 import { MoodDisplay, EmotionalState } from "./StateIndicator";
-import MeditationWaveform from "../components/MeditationWaveform";
 import { predictState as predictMentalState } from "@/lib/stateClassifier";
 import { useRouter as useLocalRouter } from 'next/navigation';
-import { MeditationSession as MindSession } from '../components/MeditationSession';
-import UILink from "next/link";
-
-
 
 export default function BrainSignalVisualizer() {
     const [isDarkMode, setIsDarkMode] = useLocalState(false);
@@ -389,270 +379,478 @@ export default function BrainSignalVisualizer() {
         };
     }, [handleNewSample, handleNewECG]);
 
-    // Show/hide the session results dialog
-    function setShowResults(value: React.SetStateAction<boolean>): void {
-        setResultsVisible(value);
-    }
-
-    function setSessionResults(value: React.SetStateAction<{
-        duration: number;
-        averages: { alpha: number; beta: number; theta: number; delta: number; symmetry: number; };
-        mentalState: string;
-        stateDescription: string;
-        focusScore: string;
-        symmetry: string;
-        data: { timestamp: number; alpha: number; beta: number; theta: number; delta: number; symmetry: number; }[];
-        dominantBands: Record<string, number>;
-        mostFrequent: string;
-        convert: (ticks: number) => string;
-        avgSymmetry: string;
-        formattedDuration: string;
-        statePercentages: Record<string, string>;
-        goodMeditationPct: string;
-        weightedEEGScore: number;
-    } | null>): void {
-        setSessionSummary(value);
-    }
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-            {/* Header */}
-            <header className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
-                <div className="container mx-auto px-4 py-4">
+        <div className={classNames(
+            "min-h-screen transition-all duration-500 overflow-x-hidden",
+            isDarkMode
+                ? "bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
+                : "bg-gradient-to-br from-slate-50 via-white to-slate-100"
+        )}>
+            {/* Enhanced Background Pattern */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-0 left-0 w-full h-full opacity-30">
+                    <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-gradient-to-br from-blue-400/10 to-purple-600/10 blur-3xl animate-pulse"></div>
+                    <div className="absolute bottom-20 right-20 w-72 h-72 rounded-full bg-gradient-to-br from-cyan-400/10 to-teal-600/10 blur-3xl animate-pulse delay-1000"></div>
+                    <div className="absolute top-1/2 left-1/2 w-96 h-96 rounded-full bg-gradient-to-br from-violet-400/5 to-pink-600/5 blur-3xl animate-pulse delay-2000"></div>
+                </div>
+            </div>
+
+            {/* Improved Header */}
+            <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/50 dark:border-slate-700/50 shadow-lg">
+                <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
-                                <Brain className="h-6 w-6 text-white" />
+                        {/* Enhanced Logo Section */}
+                        <div className="flex items-center gap-4">
+                            <div className="relative group">
+                                <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
+                                <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-purple-600 to-cyan-500 shadow-xl">
+                                    <Brain className="h-8 w-8 text-white" />
+                                </div>
                             </div>
                             <div>
-                                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                    Neural<span className="text-blue-600 dark:text-blue-400">Sense</span>
+                                <h1 className="text-2xl lg:text-3xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                                    Neural<span className="text-teal-500">Flow</span>
                                 </h1>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Real-time brain monitoring
+                                <p className="text-sm lg:text-base text-slate-600 dark:text-slate-300 font-medium">
+                                    Advanced Brain Monitoring System
                                 </p>
                             </div>
                         </div>
 
+                        {/* Enhanced Controls */}
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
+                            {/* Connection Status Indicator */}
+                            <div className={classNames(
+                                "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 shadow-lg",
+                                isDeviceConnected
+                                    ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-200 dark:border-emerald-700"
+                                    : "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-2 border-red-200 dark:border-red-700"
+                            )}>
                                 <div className={classNames(
-                                    "h-2 w-2 rounded-full",
-                                    isDeviceConnected ? "bg-green-500 animate-pulse" : "bg-slate-400"
+                                    "h-3 w-3 rounded-full shadow-lg",
+                                    isDeviceConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"
                                 )} />
-                                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                <span className="text-sm font-bold hidden sm:inline">
                                     {isDeviceConnected ? "Connected" : "Disconnected"}
                                 </span>
                             </div>
 
-                            {!isDeviceConnected ? (
-                                <UIButton onClick={connectDevice} className="gap-2">
-                                    <PlugIcon className="h-4 w-4" />
-                                    Connect
-                                </UIButton>
-                            ) : (
-                                <UIButton onClick={disconnectDevice} variant="destructive" className="gap-2">
-                                    <PlugZapIcon className="h-4 w-4" />
-                                    Disconnect
-                                </UIButton>
-                            )}
+                            {/* Action Button */}
+                            <UIButton
+                                onClick={isDeviceConnected ? disconnectDevice : connectDevice}
+                                className={classNames(
+                                    "gap-2 px-6 py-2.5 rounded-xl font-bold text-white shadow-xl transition-all duration-300 transform hover:scale-105",
+                                    isDeviceConnected
+                                        ? "bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700"
+                                        : "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                                )}
+                            >
+                                {isDeviceConnected ? (
+                                    <>
+                                        <PlugZapIcon className="h-4 w-4" />
+                                        <span className="hidden sm:inline">Disconnect</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <PlugIcon className="h-4 w-4" />
+                                        <span className="hidden sm:inline">Connect</span>
+                                    </>
+                                )}
+                            </UIButton>
 
+                            {/* Theme Toggle */}
                             <UIButton
                                 onClick={() => setIsDarkMode(!isDarkMode)}
                                 variant="ghost"
                                 size="icon"
-                                className="rounded-lg"
+                                className="rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-lg transition-all duration-300"
                             >
-                                {isDarkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+                                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                             </UIButton>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main className="container mx-auto px-4 py-6 space-y-6">
-                {/* Main Dashboard */}
-                <UITabs defaultValue="overview" className="space-y-6">
-                    <UITabsList className="grid w-full grid-cols-3">
-                        <UITabsTrigger value="overview">Overview</UITabsTrigger>
-                       
-                    </UITabsList>
-
-                    <UITabsContent value="overview" className="space-y-6">
-                        {/* Status Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <UICard>
-                                <UICardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <UICardTitle className="text-sm font-medium">Connection</UICardTitle>
-                                    <ActivityIcon className="h-4 w-4 text-muted-foreground" />
-                                </UICardHeader>
-                                <UICardContent>
-                                    <div className="text-2xl font-bold">
-                                        {isDeviceConnected ? "Active" : "Inactive"}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        Device status
-                                    </p>
-                                </UICardContent>
-                            </UICard>
-
-                            <UICard>
-                                <UICardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <UICardTitle className="text-sm font-medium">Heart Rate</UICardTitle>
-                                    <HeartIcon className={classNames("h-4 w-4", heartbeatActive ? "text-red-500 scale-125" : "text-muted-foreground")} />
-                                </UICardHeader>
-                                <UICardContent>
-                                    <div className="text-2xl font-bold" ref={bpmCurrentRef}>--</div>
-                                    <p className="text-xs text-muted-foreground">bpm</p>
-                                </UICardContent>
-                            </UICard>
-
-                            <UICard>
-                                <UICardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <UICardTitle className="text-sm font-medium">HRV</UICardTitle>
-                                    <ActivitySquareIcon className="h-4 w-4 text-muted-foreground" />
-                                </UICardHeader>
-                                <UICardContent>
-                                    <div className="text-2xl font-bold" ref={hrvCurrentRef}>--</div>
-                                    <p className="text-xs text-muted-foreground">ms</p>
-                                </UICardContent>
-                            </UICard>
-
-                            <UICard>
-                                <UICardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <UICardTitle className="text-sm font-medium">Mental State</UICardTitle>
-                                    <BrainIcon className="h-4 w-4 text-muted-foreground" />
-                                </UICardHeader>
-                                <UICardContent>
-                                    <div className="text-2xl font-bold">
-                                       <MoodDisplay state={currentMentalState} />
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        Current state
-                                    </p>
-                                </UICardContent>
-                            </UICard>
+            {/* Improved Main Content */}
+            <main className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-8">
+                {/* Enhanced Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Device Status */}
+                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50">
+                                <Signal className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div className={classNames(
+                                "px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wide",
+                                isDeviceConnected
+                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                                    : "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-400"
+                            )}>
+                                {isDeviceConnected ? "ONLINE" : "OFFLINE"}
+                            </div>
                         </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                Device Status
+                            </h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                Neural interface connection
+                            </p>
+                        </div>
+                    </div>
 
-                        {/* Brain Activity Overview */}
-                        <UICard>
-                            <UICardHeader>
-                                <UICardTitle className="flex items-center gap-2">
-                                    <BarChartIcon className="h-3 w-5" />
-                                    Brain Activity Overview
-                                </UICardTitle>
-                                <UICardDescription>
-                                    Real-time brainwave analysis from both hemispheres
-                                </UICardDescription>
-                            </UICardHeader>
-                            <UICardContent>
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    {/* Left Hemisphere */}
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-3 w-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600" />
-                                            <h3 className="font-semibold">Left Hemisphere</h3>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {["Delta", "Theta", "Alpha", "Beta", "Gamma"].map((band, index) => {
-                                                const value = radarCh0DataRef.current.find((d) => d.subject === band)?.value ?? 0;
-                                                const colors = ["bg-purple-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-red-500"];
-                                                return (
-                                                    <div key={band} className="space-y-2">
-                                                        <div className="flex justify-between text-sm">
-                                                            <span className="font-medium">{band}</span>
-                                                            <span className="text-muted-foreground">{value.toFixed(1)}%</span>
-                                                        </div>
-                                                        <UIProgress value={Math.min(value, 100)} className="h-2" />
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
+                    {/* Heart Rate */}
+                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105 ">
+                        <div className="flex items-center justify-between mb-4 ">
+                            <div className="p-3 rounded-2xl bg-gradient-to-br from-red-100 to-pink-200 dark:from-red-900/50 dark:to-pink-800/50">
+                                <Heart className={classNames(
+                                    "h-7 w-7 transition-all duration-300",
+                                    heartbeatActive ? "text-red-500 scale-125" : "text-red-600 dark:text-red-400"
+                                )} />
+                            </div>
+                            <div className="text-right">
+                                <div className="text-3xl font-black text-slate-900 dark:text-slate-100" ref={bpmCurrentRef}>--</div>
+                                <div className="text-sm font-medium text-slate-500">BPM</div>
+                            </div>
+                        </div>
+                        <div className="space-y-2 ">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                Heart Rate
+                            </h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mx-4">
+                                Cardiovascular monitoring
+                            </p>
+                        </div>
+                    </div>
 
-                                    {/* Right Hemisphere */}
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-3 w-3 rounded-full bg-gradient-to-r from-green-500 to-cyan-600" />
-                                            <h3 className="font-semibold">Right Hemisphere</h3>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {["Delta", "Theta", "Alpha", "Beta", "Gamma"].map((band, index) => {
-                                                const value = radarCh1DataRef.current.find((d) => d.subject === band)?.value ?? 0;
-                                                const colors = ["bg-purple-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-red-500"];
-                                                return (
-                                                    <div key={band} className="space-y-2">
-                                                        <div className="flex justify-between text-sm">
-                                                            <span className="font-medium">{band}</span>
-                                                            <span className="text-muted-foreground">{value.toFixed(1)}%</span>
-                                                        </div>
-                                                        <UIProgress value={Math.min(value, 100)} className="h-2" />
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
+                    {/* HRV */}
+                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-100 to-violet-200 dark:from-purple-900/50 dark:to-violet-800/50">
+                                <Activity className="h-7 w-7 text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <div className="text-right">
+                                <div className="text-3xl font-black text-slate-900 dark:text-slate-100" ref={hrvCurrentRef}>--</div>
+                                <div className="text-sm font-medium text-slate-500">MS</div>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                Heart Rate Variability
+                            </h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                Autonomic nervous system
+                            </p>
+                        </div>
+                    </div>
 
+                    {/* Mental State */}
+                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-900/50 dark:to-teal-800/50">
+                                <Brain className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                                AI ANALYSIS
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                Mental State
+                            </h3>
+                            <div className="text-lg font-bold">
+                                <MoodDisplay state={currentMentalState} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
+                {/* Enhanced Signal Visualization */}
+                <div className="space-y-6">
+                    <div className="text-center">
+                        <h2 className="text-3xl font-black bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-200 dark:to-slate-400 bg-clip-text text-transparent mb-2">
+                            Live Signal Monitoring
+                        </h2>
+                        <p className="text-lg text-slate-600 dark:text-slate-400">
+                            Real-time bioelectric signal visualization
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-8">
+                        {/* EEG Channel 1 */}
+                        <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-4 h-4 rounded-full bg-amber-500 shadow-lg animate-pulse"></div>
+                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">EEG Channel 1</h3>
                                 </div>
-                            </UICardContent>
-                        </UICard>
-
-                        {/* Signal Plots */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <UICard>
-                                <UICardHeader>
-                                    <UICardTitle className="text-sm">EEG Channel 1</UICardTitle>
-                                </UICardHeader>
-                                <UICardContent>
-                                    <div className="h-32">
-                                        <WebglPlotCanvas
-                                            ref={eeg1CanvasRef}
-                                            channels={[1]}
-                                            colors={{ 1: "#C29963" }}
-                                            gridnumber={10}
-                                        />
+                                <div className="flex items-center gap-3">
+                                    <span className="px-4 py-2 rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 text-sm font-bold">
+                                        FRONTAL CORTEX
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
+                                            <Maximize2 className="h-4 w-4" />
+                                        </UIButton>
+                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
+                                            <Settings className="h-4 w-4" />
+                                        </UIButton>
                                     </div>
-                                </UICardContent>
-                            </UICard>
-
-                            <UICard>
-                                <UICardHeader>
-                                    <UICardTitle className="text-sm">EEG Channel 2</UICardTitle>
-                                </UICardHeader>
-                                <UICardContent>
-                                    <div className="h-32">
-                                        <WebglPlotCanvas
-                                            ref={eeg2CanvasRef}
-                                            channels={[2]}
-                                            colors={{ 2: "#63A2C2" }}
-                                            gridnumber={10}
-                                        />
-                                    </div>
-                                </UICardContent>
-                            </UICard>
-
-                            <UICard>
-                                <UICardHeader>
-                                    <UICardTitle className="text-sm">ECG Signal</UICardTitle>
-                                </UICardHeader>
-                                <UICardContent>
-                                    <div className="h-32">
-                                        <WebglPlotCanvas
-                                            ref={ecgCanvasRef}
-                                            channels={[3]}
-                                            colors={{ 3: "#E4967E" }}
-                                            gridnumber={10}
-                                        />
-                                    </div>
-                                </UICardContent>
-                            </UICard>
-
+                                </div>
+                            </div>
+                            <div className="relative h-48 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border-2 border-amber-200 dark:border-amber-800/50 overflow-hidden shadow-inner">
+                                <WebglPlotCanvas
+                                    ref={eeg1CanvasRef}
+                                    channels={[1]}
+                                    colors={{ 1: "#F59E0B" }}
+                                    gridnumber={10}
+                                />
+                            </div>
                         </div>
-                    </UITabsContent>
 
-                </UITabs>
+                        {/* EEG Channel 2 */}
+                        <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-4 h-4 rounded-full bg-cyan-500 shadow-lg animate-pulse"></div>
+                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">EEG Channel 2</h3>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="px-4 py-2 rounded-xl bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300 text-sm font-bold">
+                                        PARIETAL CORTEX
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
+                                            <Maximize2 className="h-4 w-4" />
+                                        </UIButton>
+                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
+                                            <Settings className="h-4 w-4" />
+                                        </UIButton>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="relative h-48 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border-2 border-cyan-200 dark:border-cyan-800/50 overflow-hidden shadow-inner">
+                                <WebglPlotCanvas
+                                    ref={eeg2CanvasRef}
+                                    channels={[2]}
+                                    colors={{ 2: "#06B6D4" }}
+                                    gridnumber={10}
+                                />
+                            </div>
+                        </div>
+
+                        {/* ECG Signal */}
+                        <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-4 h-4 rounded-full bg-rose-500 shadow-lg animate-pulse"></div>
+                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">ECG Signal</h3>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="px-4 py-2 rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 text-sm font-bold">
+                                        CARDIAC RHYTHM
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
+                                            <Maximize2 className="h-4 w-4" />
+                                        </UIButton>
+                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
+                                            <Settings className="h-4 w-4" />
+                                        </UIButton>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="relative h-48 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border-2 border-rose-200 dark:border-rose-800/50 overflow-hidden shadow-inner">
+                                <WebglPlotCanvas
+                                    ref={ecgCanvasRef}
+                                    channels={[3]}
+                                    colors={{ 3: "#F43F5E" }}
+                                    gridnumber={10}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Enhanced Brain Wave Analysis & Training */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Brain Wave Analysis */}
+                    <div className="lg:col-span-2 group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-100 to-purple-200 dark:from-violet-900/50 dark:to-purple-800/50">
+                                    <Waves className="h-7 w-7 text-violet-600 dark:text-violet-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Brain Wave Analysis</h3>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">Real-time frequency distribution</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Left Hemisphere */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-4 h-4 rounded-full bg-blue-500 shadow-lg"></div>
+                                    <h4 className="text-lg font-bold text-slate-900 dark:text-slate-100">Left Hemisphere</h4>
+                                </div>
+                                <div className="space-y-4">
+                                    {["Delta", "Theta", "Alpha", "Beta", "Gamma"].map((band, index) => {
+                                        const value = radarCh0DataRef.current.find((d) => d.subject === band)?.value ?? 0;
+                                        const colors = [
+                                            "from-indigo-500 to-purple-600",
+                                            "from-blue-500 to-indigo-600",
+                                            "from-green-500 to-blue-600",
+                                            "from-yellow-500 to-orange-600",
+                                            "from-red-500 to-pink-600"
+                                        ];
+                                        const frequencies = ["0.5-4 Hz", "4-8 Hz", "8-13 Hz", "13-30 Hz", "30-100 Hz"];
+                                        return (
+                                            <div key={band} className="space-y-3">
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <span className="font-bold text-slate-900 dark:text-slate-100">{band}</span>
+                                                        <span className="text-xs text-slate-500 ml-2">{frequencies[index]}</span>
+                                                    </div>
+                                                    <span className="text-lg font-black text-slate-900 dark:text-slate-100">{value.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="relative h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner">
+                                                    <div
+                                                        className={`h-full bg-gradient-to-r ${colors[index]} transition-all duration-1000 ease-out shadow-lg`}
+                                                        style={{ width: `${Math.min(value, 100)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Right Hemisphere */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-4 h-4 rounded-full bg-green-500 shadow-lg"></div>
+                                    <h4 className="text-lg font-bold text-slate-900 dark:text-slate-100">Right Hemisphere</h4>
+                                </div>
+                                <div className="space-y-4">
+                                    {["Delta", "Theta", "Alpha", "Beta", "Gamma"].map((band, index) => {
+                                        const value = radarCh1DataRef.current.find((d) => d.subject === band)?.value ?? 0;
+                                        const colors = [
+                                            "from-indigo-500 to-purple-600",
+                                            "from-blue-500 to-indigo-600",
+                                            "from-green-500 to-blue-600",
+                                            "from-yellow-500 to-orange-600",
+                                            "from-red-500 to-pink-600"
+                                        ];
+                                        const frequencies = ["0.5-4 Hz", "4-8 Hz", "8-13 Hz", "13-30 Hz", "30-100 Hz"];
+                                        return (
+                                            <div key={band} className="space-y-3">
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <span className="font-bold text-slate-900 dark:text-slate-100">{band}</span>
+                                                        <span className="text-xs text-slate-500 ml-2">{frequencies[index]}</span>
+                                                    </div>
+                                                    <span className="text-lg font-black text-slate-900 dark:text-slate-100">{value.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="relative h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner">
+                                                    <div
+                                                        className={`h-full bg-gradient-to-r ${colors[index]} transition-all duration-1000 ease-out shadow-lg`}
+                                                        style={{ width: `${Math.min(value, 100)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Enhanced Training Goals */}
+                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-900/50 dark:to-teal-800/50">
+                                <Target className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Training Goals</h3>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">Select your target</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 mb-8">
+                            {(['anxiety', 'meditation', 'sleep'] as const).map((goal) => (
+                                <button
+                                    key={goal}
+                                    onClick={() => setGoalSelected(goal)}
+                                    className={classNames(
+                                        "w-full p-4 rounded-2xl text-left transition-all duration-300 transform hover:scale-105 shadow-lg",
+                                        goalSelected === goal
+                                            ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-xl"
+                                            : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                                    )}
+                                >
+                                    <div className="font-bold text-lg mb-1">
+                                        {goal === 'anxiety' && 'Anxiety Relief'}
+                                        {goal === 'meditation' && 'Deep Meditation'}
+                                        {goal === 'sleep' && 'Sleep Preparation'}
+                                    </div>
+                                    <div className="text-sm opacity-80">
+                                        {goal === 'anxiety' && 'Alpha wave enhancement'}
+                                        {goal === 'meditation' && 'Theta wave training'}
+                                        {goal === 'sleep' && 'Delta wave induction'}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Performance Score */}
+                        {relaxScore !== null && (
+                            <div className="p-6 rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-2 border-green-200 dark:border-green-800">
+                                <div className="text-center space-y-4">
+                                    <h4 className="text-lg font-bold text-green-800 dark:text-green-200">Performance Score</h4>
+                                    <div className="text-4xl font-black text-green-600 dark:text-green-400">
+                                        {(relaxScore * 100).toFixed(0)}%
+                                    </div>
+                                    <div className="relative h-4 bg-green-200 dark:bg-green-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-1000 ease-out"
+                                            style={{ width: `${Math.min(relaxScore * 100, 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Enhanced Action Buttons */}
+                <div className="flex flex-wrap justify-center gap-4 pt-8">
+                    <UIButton
+                        variant="outline"
+                        className="gap-3 px-8 py-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-700 hover:bg-white/70 dark:hover:bg-slate-800/70 font-bold text-lg shadow-lg transition-all duration-300 hover:scale-105"
+                    >
+                        <Download className="h-5 w-5" />
+                        Export Data
+                    </UIButton>
+                    <UIButton
+                        variant="outline"
+                        className="gap-3 px-8 py-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-700 hover:bg-white/70 dark:hover:bg-slate-800/70 font-bold text-lg shadow-lg transition-all duration-300 hover:scale-105"
+                    >
+                        <Share2 className="h-5 w-5" />
+                        Share Session
+                    </UIButton>
+                    <UIButton
+                        variant="outline"
+                        className="gap-3 px-8 py-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-700 hover:bg-white/70 dark:hover:bg-slate-800/70 font-bold text-lg shadow-lg transition-all duration-300 hover:scale-105"
+                    >
+                        <RotateCcw className="h-5 w-5" />
+                        Reset Session
+                    </UIButton>
+                </div>
             </main>
         </div>
     );

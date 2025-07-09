@@ -41,56 +41,8 @@ const WebglPlotCanvas = forwardRef<WebglPlotCanvasHandle, Props>(
     const linesRef = useRef<Record<string, WebglLine>>({})
     const sweepRef = useRef(0)
     const containerRef = useRef<HTMLDivElement>(null)
-    // Constants (could be props if needed)
-    const samplingRate = 500;
-    const selectedBits = 10;
-    const theme = 'dark';
-    const gridCreatedRef = useRef(false);// Track if grid has been created
-
-    // Create grid lines (only once)
-    const createGridLines = () => {
-      if (!containerRef.current || gridCreatedRef.current) return
-      gridCreatedRef.current = true
-
-      const canvasWrapper = document.createElement("div")
-      canvasWrapper.className = "grid-lines-wrapper absolute inset-0 pointer-events-none"
-
-      const opacityDarkMajor = "0.2"
-      const opacityDarkMinor = "0.05"
-      const opacityLightMajor = "0.4"
-      const opacityLightMinor = "0.1"
-      const distanceminor = samplingRate * 0.04
-      const numGridLines = (Math.pow(2, selectedBits) * 4 / distanceminor)
-
-      // Vertical lines
-      for (let j = 1; j < numGridLines; j++) {
-        const gridLineX = document.createElement("div")
-        gridLineX.className = "absolute bg-[rgb(128,128,128)]"
-        gridLineX.style.width = "1px"
-        gridLineX.style.height = "100%"
-        gridLineX.style.left = `${((j / numGridLines) * 100).toFixed(3)}%`
-        gridLineX.style.opacity = j % 5 === 0
-          ? (theme === "dark" ? opacityDarkMajor : opacityLightMajor)
-          : (theme === "dark" ? opacityDarkMinor : opacityLightMinor)
-        canvasWrapper.appendChild(gridLineX)
-      }
-
-      // Horizontal lines
-      for (let j = 1; j < gridnumber; j++) {
-        const gridLineY = document.createElement("div")
-        gridLineY.className = "absolute bg-[rgb(128,128,128)]"
-        gridLineY.style.height = "1px"
-        gridLineY.style.width = "100%"
-        gridLineY.style.top = `${((j / gridnumber) * 100).toFixed(3)}%`
-        gridLineY.style.opacity = j % 5 === 0
-          ? (theme === "dark" ? opacityDarkMajor : opacityLightMajor)
-          : (theme === "dark" ? opacityDarkMinor : opacityLightMinor)
-        canvasWrapper.appendChild(gridLineY)
-      }
-
-      containerRef.current.appendChild(canvasWrapper)
-    }
-    createGridLines();
+   
+   
     useImperativeHandle(
       ref,
       () => ({
@@ -119,8 +71,6 @@ const WebglPlotCanvas = forwardRef<WebglPlotCanvasHandle, Props>(
       [channels] // should depend on channels
     )
 
-
-
     // Initialize WebGL plot and lines
     const initWebglPlot = () => {
       const canvas = canvasRef.current
@@ -144,8 +94,7 @@ const WebglPlotCanvas = forwardRef<WebglPlotCanvasHandle, Props>(
 
         // Initialize with some default data (sin wave for example)
         for (let i = 0; i < line.numPoints; i++) {
-          const x = (i / line.numPoints) * 4 * Math.PI
-          line.setY(i, Math.sin(x) * 0.8)
+          line.setY(i, 0) // Straight horizontal line at center
         }
 
         linesRef.current[ch] = line
@@ -154,11 +103,11 @@ const WebglPlotCanvas = forwardRef<WebglPlotCanvasHandle, Props>(
 
       wglp.update()
       sweepRef.current = 0
-      createGridLines()
+    
     }
     useEffect(() => {
       const handleResize = () => {
-        createGridLines();
+       
         initWebglPlot();
 
       };
@@ -166,7 +115,7 @@ const WebglPlotCanvas = forwardRef<WebglPlotCanvasHandle, Props>(
       return () => {
         window.removeEventListener("resize", handleResize);
       };
-    }, [createGridLines, initWebglPlot]);
+    }, [ initWebglPlot]);
     // 1) Initial setup effect
     useEffect(() => {
       initWebglPlot()
