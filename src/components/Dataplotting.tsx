@@ -417,55 +417,56 @@ export default function BrainSignalVisualizer() {
                             </div>
                         </div>
 
-                        {/* Enhanced Controls */}
-                        <div className="flex items-center gap-3">
-                            {/* Connection Status Indicator */}
+                        {/* Enhanced Controls with Better Padding */}
+                        <div className="flex items-center gap-4 px-6 py-4">
+                            {/* Connection Status Indicator with Enhanced Padding */}
                             <div className={classNames(
-                                "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 shadow-lg",
+                                "flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-300 shadow-lg",
                                 isDeviceConnected
                                     ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-200 dark:border-emerald-700"
                                     : "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-2 border-red-200 dark:border-red-700"
                             )}>
                                 <div className={classNames(
-                                    "h-3 w-3 rounded-full shadow-lg",
+                                    "h-4 w-4 rounded-full shadow-lg flex-shrink-0",
                                     isDeviceConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"
                                 )} />
-                                <span className="text-sm font-bold hidden sm:inline">
+                                <span className="text-sm font-bold hidden sm:inline px-2" style={{ padding: "0.4rem" }}>
                                     {isDeviceConnected ? "Connected" : "Disconnected"}
                                 </span>
                             </div>
 
-                            {/* Action Button */}
+                            {/* Action Button with Enhanced Padding */}
                             <UIButton
                                 onClick={isDeviceConnected ? disconnectDevice : connectDevice}
                                 className={classNames(
-                                    "gap-2 px-6 py-2.5 rounded-xl font-bold text-white shadow-xl transition-all duration-300 transform hover:scale-105",
+                                    "gap-3 px-8 py-4 rounded-xl font-bold text-white shadow-xl transition-all duration-300 transform hover:scale-105 min-w-[160px]", // Increased min-width
                                     isDeviceConnected
                                         ? "bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700"
                                         : "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                                 )}
                             >
                                 {isDeviceConnected ? (
-                                    <>
-                                        <PlugZapIcon className="h-4 w-4" />
-                                        <span className="hidden sm:inline">Disconnect</span>
-                                    </>
+                                    <div className="flex items-center gap-3 px-3 py-1"> {/* Increased internal padding */}
+                                        <PlugZapIcon className="h-5 w-5 flex-shrink-0" />
+                                        <span className="hidden sm:inline whitespace-nowrap">Disconnect</span> {/* Added whitespace-nowrap */
+                                        }
+                                    </div>
                                 ) : (
-                                    <>
-                                        <PlugIcon className="h-4 w-4" />
-                                        <span className="hidden sm:inline">Connect</span>
-                                    </>
+                                    <div className="flex items-center gap-3 px-3 py-1"> {/* Increased internal padding */}
+                                        <PlugIcon className="h-5 w-5 flex-shrink-0" />
+                                        <span className="hidden sm:inline whitespace-nowrap">Connect</span> {/* Added whitespace-nowrap */}
+                                    </div>
                                 )}
                             </UIButton>
 
-                            {/* Theme Toggle */}
+                            {/* Theme Toggle with Enhanced Padding */}
                             <UIButton
                                 onClick={() => setIsDarkMode(!isDarkMode)}
                                 variant="ghost"
                                 size="icon"
-                                className="rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-lg transition-all duration-300"
+                                className="rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-lg transition-all duration-300 h-14 w-14 p-4"
                             >
-                                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                                {isDarkMode ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
                             </UIButton>
                         </div>
                     </div>
@@ -477,7 +478,7 @@ export default function BrainSignalVisualizer() {
                 {/* Enhanced Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Device Status */}
-                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105">
+                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105" style={{ padding: "0.9rem" }}>
                         <div className="flex items-center justify-between mb-4">
                             <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50">
                                 <Signal className="h-7 w-7 text-blue-600 dark:text-blue-400" />
@@ -491,7 +492,7 @@ export default function BrainSignalVisualizer() {
                                 {isDeviceConnected ? "ONLINE" : "OFFLINE"}
                             </div>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2" style={{ paddingLeft: "0.9rem" }}>
                             <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                                 Device Status
                             </h3>
@@ -502,7 +503,7 @@ export default function BrainSignalVisualizer() {
                     </div>
 
                     {/* Heart Rate */}
-                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105 ">
+                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105 " style={{ padding: "0.9rem" }}>
                         <div className="flex items-center justify-between mb-4 ">
                             <div className="p-3 rounded-2xl bg-gradient-to-br from-red-100 to-pink-200 dark:from-red-900/50 dark:to-pink-800/50">
                                 <Heart className={classNames(
@@ -515,7 +516,7 @@ export default function BrainSignalVisualizer() {
                                 <div className="text-sm font-medium text-slate-500">BPM</div>
                             </div>
                         </div>
-                        <div className="space-y-2 ">
+                        <div className="space-y-2 " style={{ paddingLeft: "0.9rem" }}>
                             <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                                 Heart Rate
                             </h3>
@@ -526,7 +527,7 @@ export default function BrainSignalVisualizer() {
                     </div>
 
                     {/* HRV */}
-                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105">
+                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105" style={{ padding: "0.9rem" }}>
                         <div className="flex items-center justify-between mb-4">
                             <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-100 to-violet-200 dark:from-purple-900/50 dark:to-violet-800/50">
                                 <Activity className="h-7 w-7 text-purple-600 dark:text-purple-400" />
@@ -536,7 +537,7 @@ export default function BrainSignalVisualizer() {
                                 <div className="text-sm font-medium text-slate-500">MS</div>
                             </div>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2" >
                             <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                                 Heart Rate Variability
                             </h3>
@@ -547,8 +548,8 @@ export default function BrainSignalVisualizer() {
                     </div>
 
                     {/* Mental State */}
-                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105">
-                        <div className="flex items-center justify-between mb-4">
+                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105" style={{ padding: "0.9rem" }}>
+                        <div className="flex items-center justify-between mb-4" >
                             <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-900/50 dark:to-teal-800/50">
                                 <Brain className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
                             </div>
@@ -556,7 +557,7 @@ export default function BrainSignalVisualizer() {
                                 AI ANALYSIS
                             </div>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2" >
                             <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                                 Mental State
                             </h3>
@@ -768,67 +769,10 @@ export default function BrainSignalVisualizer() {
                             </div>
                         </div>
                     </div>
-
-                    {/* Enhanced Training Goals */}
-                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
-                        <div className="flex items-center gap-4 mb-8">
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-900/50 dark:to-teal-800/50">
-                                <Target className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Training Goals</h3>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">Select your target</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4 mb-8">
-                            {(['anxiety', 'meditation', 'sleep'] as const).map((goal) => (
-                                <button
-                                    key={goal}
-                                    onClick={() => setGoalSelected(goal)}
-                                    className={classNames(
-                                        "w-full p-4 rounded-2xl text-left transition-all duration-300 transform hover:scale-105 shadow-lg",
-                                        goalSelected === goal
-                                            ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-xl"
-                                            : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                                    )}
-                                >
-                                    <div className="font-bold text-lg mb-1">
-                                        {goal === 'anxiety' && 'Anxiety Relief'}
-                                        {goal === 'meditation' && 'Deep Meditation'}
-                                        {goal === 'sleep' && 'Sleep Preparation'}
-                                    </div>
-                                    <div className="text-sm opacity-80">
-                                        {goal === 'anxiety' && 'Alpha wave enhancement'}
-                                        {goal === 'meditation' && 'Theta wave training'}
-                                        {goal === 'sleep' && 'Delta wave induction'}
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Performance Score */}
-                        {relaxScore !== null && (
-                            <div className="p-6 rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-2 border-green-200 dark:border-green-800">
-                                <div className="text-center space-y-4">
-                                    <h4 className="text-lg font-bold text-green-800 dark:text-green-200">Performance Score</h4>
-                                    <div className="text-4xl font-black text-green-600 dark:text-green-400">
-                                        {(relaxScore * 100).toFixed(0)}%
-                                    </div>
-                                    <div className="relative h-4 bg-green-200 dark:bg-green-800 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-1000 ease-out"
-                                            style={{ width: `${Math.min(relaxScore * 100, 100)}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
                 </div>
 
                 {/* Enhanced Action Buttons */}
-                <div className="flex flex-wrap justify-center gap-4 pt-8">
+                <div className="flex flex-wrap justify-center gap-4 pt-18">
                     <UIButton
                         variant="outline"
                         className="gap-3 px-8 py-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-700 hover:bg-white/70 dark:hover:bg-slate-800/70 font-bold text-lg shadow-lg transition-all duration-300 hover:scale-105"
