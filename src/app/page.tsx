@@ -5,3 +5,4 @@ import Dataplotting from '@/components/Dataplotting';
 export default function HomePage() {
   return <Dataplotting />;
 }
+// test 
