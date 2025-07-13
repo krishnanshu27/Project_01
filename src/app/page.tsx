@@ -1,7 +1,9 @@
 'use client';
 import React from 'react';
-import Dataplotting from '@/components/Dataplotting';
+import EEGDataPlot  from '@/components/EEGDataPlot';
 
 export default function HomePage() {
-  return <Dataplotting />;
+  return <EEGDataPlot />;
 }
+
+

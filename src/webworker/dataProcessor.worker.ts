@@ -1,5 +1,5 @@
 // webworker/dataProcessor.worker.ts
-import { EXGFilter, Notch } from '@/lib/filters';
+import { EXGFilter, Notch } from '@/lib/signalFilterUI';
 
 
 // Initialize filters and FFT
@@ -47,3 +47,4 @@ self.onmessage = (e) => {
     });
   }
 };
+
