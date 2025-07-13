@@ -1,4 +1,4 @@
-import { FFT } from '@/lib/fft';
+import { FFT } from '@/lib/fastFourierTransform';
 
 // Frequency band definitions (Hz)
 const BANDS: Record<string, [number, number]> = {
@@ -114,3 +114,4 @@ self.onmessage = (e: MessageEvent<{
    
   });
 };
+
