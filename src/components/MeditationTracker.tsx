@@ -3,11 +3,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useBluetoothDataStream } from '../components/BluetoothDataHandler';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
+import { Button } from "@/components/ui/AppButton";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/InfoCard';
+import { Badge } from '@/components/ui/StatusBadge';
+import { Progress } from '@/components/ui/ProgressBar';
+import { Separator } from '@/components/ui/Divider';
 import { 
     Play, 
     Pause, 

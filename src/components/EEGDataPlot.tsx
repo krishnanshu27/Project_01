@@ -10,7 +10,7 @@ import { MoodDisplay, type EmotionalState } from './MentalStateIndicator';
 import { predictState } from '@/lib/mentalStateClassifier';
 import { getRandomQuote } from '@/quote.js';
 
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/AppButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/InfoCard';
 import { Badge } from '@/components/ui/StatusBadge';
 import { Progress } from '@/components/ui/ProgressBar';
