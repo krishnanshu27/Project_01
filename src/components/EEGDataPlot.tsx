@@ -215,11 +215,11 @@ const EEGDataPlot: React.FC = () => {
   }, [isRecording]);
 
   const updateMoodState = useCallback((bpm: BPMData) => {
-    if (bpm.sdnn !== null && bmp.rmssd !== null && bpm.pnn50 !== null) {
+    if (bmp.sdnn !== null && bmp.rmssd !== null && bmp.pnn50 !== null) {
       const mood = predictState({
-        sdnn: bpm.sdnn,
-        rmssd: bpm.rmssd,
-        pnn50: bpm.pnn50
+        sdnn: bmp.sdnn,
+        rmssd: bmp.rmssd,
+        pnn50: bmp.pnn50
       });
       setCurrentMood(mood);
     }
