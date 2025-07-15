@@ -1,459 +1,358 @@
-'use client';
+"use client";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useBluetoothDataStream } from './BluetoothDataHandler';
-import { MeditationSession } from './MeditationTracker';
-import MeditationWaveformVisualizer from './MeditationWaveformPlot';
-import WebglPlotCanvas, { type WebglPlotCanvasHandle } from './SignalCanvasPlot';
-import HeartRateVariabilityCanvas, { type HeartRateVariabilityHandle } from './Hrvwebglplot';
-import { MoodDisplay, type EmotionalState } from './MentalStateIndicator';
-import { predictState } from '@/lib/mentalStateClassifier';
-import { getRandomQuote } from '@/quote.js';
-
-import { Button } from '@/components/ui/AppButton';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/InfoCard';
-import { Badge } from '@/components/ui/StatusBadge';
-import { Progress } from '@/components/ui/ProgressBar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/TabNavigation';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/ModalDialog';
-import { Switch } from '@/components/ui/ToggleSwitch';
-
-import { 
-  Brain, 
-  Heart, 
-  Activity, 
-  Wifi, 
-  WifiOff, 
-  Play, 
-  Pause, 
-  Settings, 
-  TrendingUp,
-  Zap,
-  Eye,
-  Waves,
-  BarChart3,
-  Monitor,
-  Sparkles,
-  Target,
-  Timer,
-  Award,
-  Filter,
-  Signal,
-  Bluetooth,
-  BluetoothConnected,
-  Circle
-} from 'lucide-react';
-
-// Types
-interface ProcessedData {
-  counter: number;
-  eeg0: number;
-  eeg1: number;
-  ecg: number;
-}
-
-interface BandPowers {
-  smooth0: Record<string, number>;
-  smooth1: Record<string, number>;
-}
-
-interface BPMData {
-  bpm: number | null;
-  hrv: number | null;
-  sdnn: number | null;
-  rmssd: number | null;
-  pnn50: number | null;
-}
-
-interface SessionData {
-  timestamp: number;
-  alpha: number;
-  beta: number;
-  theta: number;
-  delta: number;
-  symmetry: number;
-}
-
-const EEGDataPlot: React.FC = () => {
-  // State management
-  const [isRecording, setIsRecording] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
-  const [showResults, setShowResults] = useState(false);
-  const [currentQuote] = useState(() => getRandomQuote());
-  const [signalQuality, setSignalQuality] = useState<'excellent' | 'good' | 'poor' | 'none'>('none');
-  const [sessionData, setSessionData] = useState<SessionData[]>([]);
-  const [sessionResults, setSessionResults] = useState<any>(null);
-  const [currentMood, setCurrentMood] = useState<EmotionalState>('no_data');
-  const [bandPowers, setBandPowers] = useState<BandPowers>({
-    smooth0: { alpha: 0, beta: 0, theta: 0, delta: 0, gamma: 0 },
-    smooth1: { alpha: 0, beta: 0, theta: 0, delta: 0, gamma: 0 }
-  });
-  const [bpmData, setBpmData] = useState<BPMData>({
-    bpm: null,
-    hrv: null,
-    sdnn: null,
-    rmssd: null,
-    pnn50: null
-  });
-
-  // Refs
-  const eegCanvasRef = useRef<WebglPlotCanvasHandle>(null);
-  const hrvCanvasRef = useRef<HeartRateVariabilityHandle>(null);
-  const dataProcessorRef = useRef<Worker | null>(null);
-  const bandPowerWorkerRef = useRef<Worker | null>(null);
-  const bpmWorkerRef = useRef<Worker | null>(null);
-  const eegBufferRef = useRef<{ eeg0: number[]; eeg1: number[] }>({ eeg0: [], eeg1: [] });
-  const ecgBufferRef = useRef<number[]>([]);
-
-  // Initialize workers
-  useEffect(() => {
-    dataProcessorRef.current = new Worker(new URL('@/webworker/dataProcessor.worker.ts', import.meta.url));
-    bandPowerWorkerRef.current = new Worker(new URL('@/webworker/bandPower.worker.ts', import.meta.url));
-    bpmWorkerRef.current = new Worker(new URL('@/webworker/bpm.worker.ts', import.meta.url));
-
-    // Setup worker message handlers
-    dataProcessorRef.current.onmessage = (e) => {
-      if (e.data.type === 'processedData') {
-        handleProcessedData(e.data.data);
-      }
-    };
-
-    bandPowerWorkerRef.current.onmessage = (e) => {
-      setBandPowers(e.data);
-      updateSessionData(e.data);
-    };
-
-    bpmWorkerRef.current.onmessage = (e) => {
-      setBpmData(e.data);
-      updateMoodState(e.data);
-      if (e.data.hrv) {
-        hrvCanvasRef.current?.addHRVData(e.data.hrv);
-      }
-    };
-
-    return () => {
-      dataProcessorRef.current?.terminate();
-      bandPowerWorkerRef.current?.terminate();
-      bpmWorkerRef.current?.terminate();
-    };
-  }, []);
-
-  // Data processing functions
-  const handleRawData = useCallback((rawData: number[]) => {
-    if (rawData.length >= 4) {
-      const processedRawData = {
-        counter: rawData[0],
-        raw0: rawData[1],
-        raw1: rawData[2],
-        raw2: rawData[3]
-      };
-      dataProcessorRef.current?.postMessage({
-        command: 'process',
-        rawData: processedRawData
-      });
-    }
-  }, []);
-
-  const handleProcessedData = useCallback((data: ProcessedData) => {
-    // Update signal quality
-    const amplitude = Math.abs(data.eeg0) + Math.abs(data.eeg1);
-    if (amplitude > 0.1) setSignalQuality('excellent');
-    else if (amplitude > 0.05) setSignalQuality('good');
-    else if (amplitude > 0.01) setSignalQuality('poor');
-    else setSignalQuality('none');
-
-    // Update EEG canvas
-    eegCanvasRef.current?.updateData([data.counter, data.eeg0, data.eeg1, data.ecg]);
-
-    // Buffer data for analysis
-    eegBufferRef.current.eeg0.push(data.eeg0);
-    eegBufferRef.current.eeg1.push(data.eeg1);
-    ecgBufferRef.current.push(data.ecg);
-
-    const bufferSize = 256;
-    if (eegBufferRef.current.eeg0.length > bufferSize) {
-      eegBufferRef.current.eeg0.shift();
-      eegBufferRef.current.eeg1.shift();
-    }
-    if (ecgBufferRef.current.length > 2000) {
-      ecgBufferRef.current.shift();
-    }
-
-    // Process band powers every 32 samples
-    if (eegBufferRef.current.eeg0.length === bufferSize) {
-      bandPowerWorkerRef.current?.postMessage({
-        eeg0: [...eegBufferRef.current.eeg0],
-        eeg1: [...eegBufferRef.current.eeg1],
-        sampleRate: 500,
-        fftSize: bufferSize
-      });
-    }
-
-    // Process BPM every 100 samples
-    if (ecgBufferRef.current.length >= 500 && ecgBufferRef.current.length % 100 === 0) {
-      bpmWorkerRef.current?.postMessage({
-        ecgBuffer: [...ecgBufferRef.current],
-        sampleRate: 500
-      });
-    }
-  }, []);
-
-  const updateSessionData = useCallback((powers: BandPowers) => {
-    if (!isRecording) return;
-
-    const avgPowers = {
-      alpha: (powers.smooth0.alpha + powers.smooth1.alpha) / 2,
-      beta: (powers.smooth0.beta + powers.smooth1.beta) / 2,
-      theta: (powers.smooth0.theta + powers.smooth1.theta) / 2,
-      delta: (powers.smooth0.delta + powers.smooth1.delta) / 2,
-      symmetry: powers.smooth0.alpha - powers.smooth1.alpha
-    };
-
-    setSessionData(prev => [...prev, {
-      timestamp: Date.now(),
-      ...avgPowers
-    }]);
-  }, [isRecording]);
-
-  const updateMoodState = useCallback((bpm: BPMData) => {
-    if (bpm.sdnn !== null && bpm.rmssd !== null && bpm.pnn50 !== null) {
-      const mood = predictState({
-        sdnn: bpm.sdnn,
-        rmssd: bpm.rmssd,
-        pnn50: bpm.pnn50
-      });
-      setCurrentMood(mood);
-    }
-  }, []);
-
-  // Bluetooth connection
-  const bluetooth = useBluetoothDataStream(handleRawData);
-
-  // Session management
-  const handleStartSession = () => {
-    setIsRecording(true);
-    setSessionData([]);
-    setSessionResults(null);
-  };
-
-  const handleEndSession = () => {
-    setIsRecording(false);
-  };
-
-  // Render session results
-  const renderSessionResults = (results: any) => (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="text-center p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950">
-          <div className="text-lg font-bold text-emerald-600">{results.goodMeditationPct}%</div>
-          <div className="text-xs text-muted-foreground">Quality</div>
-        </div>
-        <div className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-950">
-          <div className="text-lg font-bold text-blue-600">{results.focusScore}</div>
-          <div className="text-xs text-muted-foreground">Focus</div>
-        </div>
-      </div>
-      <div className="space-y-2">
-        {Object.entries(results.statePercentages).map(([state, percentage]) => (
-          <div key={state} className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="capitalize">{state}</span>
-              <span>{percentage}%</span>
-            </div>
-            <Progress value={parseFloat(percentage)} className="h-1" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const getSignalQualityColor = () => {
-    switch (signalQuality) {
-      case 'excellent': return 'text-green-500';
-      case 'good': return 'text-yellow-500';
-      case 'poor': return 'text-orange-500';
-      default: return 'text-red-500';
-    }
-  };
-
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-900 flex flex-col">
-      {/* Minimal Header */}
-      <div className="flex-none h-16 px-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <div className="h-full flex items-center justify-between">
-          {/* Logo & Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Brain className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-slate-900 dark:text-white">HealthFit</h1>
-            </div>
-          </div>
-
-          {/* Status Bar */}
-          <div className="flex items-center gap-4">
-            {/* Connection */}
-            <div className="flex items-center gap-2">
-              <Circle className={`h-2 w-2 ${bluetooth.connected ? 'fill-green-500 text-green-500' : 'fill-red-500 text-red-500'}`} />
-              <span className="text-sm text-slate-600 dark:text-slate-400">
-                {bluetooth.connected ? 'Connected' : 'Disconnected'}
-              </span>
-            </div>
-
-            {/* Signal Quality */}
-            <div className="flex items-center gap-2">
-              <Signal className={`h-4 w-4 ${getSignalQualityColor()}`} />
-              <span className="text-sm text-slate-600 dark:text-slate-400 capitalize">{signalQuality}</span>
-            </div>
-
-            {/* Recording Status */}
-            {isRecording && (
-              <div className="flex items-center gap-2">
-                <Circle className="h-2 w-2 fill-red-500 text-red-500 animate-pulse" />
-                <span className="text-sm text-red-600">Recording</span>
-              </div>
-            )}
-
-            {/* Connect Button */}
-            <Button
-              onClick={bluetooth.connected ? bluetooth.disconnect : bluetooth.connect}
-              size="sm"
-              variant={bluetooth.connected ? "destructive" : "default"}
-            >
-              {bluetooth.connected ? 'Disconnect' : 'Connect'}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 min-h-0 p-4">
-        <div className="h-full grid grid-cols-12 gap-4">
-          {/* Left Panel - Visualizations */}
-          <div className="col-span-8 flex flex-col gap-4">
-            {/* EEG Signal */}
-            <div className="flex-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-              <div className="h-12 px-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Waves className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-slate-900 dark:text-white">EEG Signal</span>
-                </div>
-                <Badge variant="secondary" className="text-xs">Live</Badge>
-              </div>
-              <div className="h-[calc(100%-3rem)]">
-                <WebglPlotCanvas
-                  ref={eegCanvasRef}
-                  channels={[0]}
-                  colors={{ 0: '#3b82f6' }}
-                  gridnumber={10}
-                />
-              </div>
-            </div>
-
-            {/* HRV Signal */}
-            <div className="flex-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-              <div className="h-12 px-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Heart className="h-4 w-4 text-red-600" />
-                  <span className="font-medium text-slate-900 dark:text-white">Heart Rate Variability</span>
-                </div>
-                <Badge variant="secondary" className="text-xs">
-                  {bpmData.bpm ? `${bpmData.bpm} BPM` : 'No Signal'}
-                </Badge>
-              </div>
-              <div className="h-[calc(100%-3rem)]">
-                <HeartRateVariabilityCanvas
-                  ref={hrvCanvasRef}
-                  dataPointCount={2000}
-                  lineColor="#ef4444"
-                  isDarkTheme={false}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Right Panel - Controls & Data */}
-          <div className="col-span-4 flex flex-col gap-4">
-            {/* Meditation Session */}
-            <div className="flex-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-              <div className="h-12 px-4 border-b border-slate-200 dark:border-slate-700 flex items-center">
-                <Target className="h-4 w-4 text-purple-600 mr-2" />
-                <span className="font-medium text-slate-900 dark:text-white">Meditation</span>
-              </div>
-              <div className="h-[calc(100%-3rem)] p-4">
-                <MeditationSession
-                  onStartSession={handleStartSession}
-                  onEndSession={handleEndSession}
-                  sessionData={sessionData}
-                  connected={bluetooth.connected}
-                  setShowResults={setShowResults}
-                  sessionResults={sessionResults}
-                  setSessionResults={setSessionResults}
-                  darkMode={false}
-                  renderSessionResults={renderSessionResults}
-                />
-              </div>
-            </div>
-
-            {/* Current State */}
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Activity className="h-4 w-4 text-emerald-600" />
-                <span className="font-medium text-slate-900 dark:text-white">Current State</span>
-              </div>
-              <div className="text-center">
-                <MoodDisplay state={currentMood} />
-              </div>
-            </div>
-
-            {/* Biometrics */}
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="h-4 w-4 text-blue-600" />
-                <span className="font-medium text-slate-900 dark:text-white">Biometrics</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="text-center p-2 rounded bg-red-50 dark:bg-red-950">
-                  <div className="text-lg font-bold text-red-600">{bpmData.bpm || '--'}</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">BPM</div>
-                </div>
-                <div className="text-center p-2 rounded bg-orange-50 dark:bg-orange-950">
-                  <div className="text-lg font-bold text-orange-600">{bpmData.hrv || '--'}</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">HRV</div>
-                </div>
-              </div>
-              
-              {/* Brain Waves */}
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Brain Waves</div>
-                {Object.entries(bandPowers.smooth0).slice(0, 4).map(([band, power]) => (
-                  <div key={band} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="capitalize">{band}</span>
-                      <span>{(power * 100).toFixed(1)}%</span>
-                    </div>
-                    <Progress value={power * 100} className="h-1" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Results Modal */}
-      <Dialog open={showResults} onOpenChange={setShowResults}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Session Results</DialogTitle>
-            <DialogDescription>Your meditation session analysis</DialogDescription>
-          </DialogHeader>
-          {sessionResults && renderSessionResults(sessionResults)}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+// Utility function for class names
+const cn = (...classes: (string | undefined | null | boolean)[]) => {
+    return classes.filter(Boolean).join(' ');
 };
 
-export default EEGDataPlot;
+// Import icons
+import {
+    Activity, Brain, Heart, Moon, Sun, Plug, PlugZap, 
+    Signal, TrendingUp, Waves, Maximize2, Settings, 
+    Download, Share2, Monitor, Sparkles, RotateCcw
+} from 'lucide-react';
+
+// Modern Button component
+interface ButtonProps {
+    children: React.ReactNode;
+    onClick?: () => void;
+    variant?: 'default' | 'ghost' | 'outline' | 'accent';
+    size?: 'sm' | 'md' | 'lg';
+    className?: string;
+    disabled?: boolean;
+}
+
+const Button: React.FC<ButtonProps> = React.memo(({ 
+    children, 
+    onClick, 
+    variant = "default", 
+    size = "md", 
+    className = "", 
+    disabled = false,
+    ...props 
+}) => {
+    const baseStyles = "inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
+    
+    const variants = {
+        default: "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200",
+        ghost: "hover:bg-slate-100 dark:hover:bg-slate-800",
+        outline: "border border-slate-200 bg-transparent hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800",
+        accent: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20"
+    };
+    
+    const sizes = {
+        sm: "h-9 px-3 text-xs",
+        md: "h-10 px-4 text-sm",
+        lg: "h-12 px-6 text-base"
+    };
+    
+    return (
+        <button
+            className={cn(baseStyles, variants[variant], sizes[size], className)}
+            onClick={onClick}
+            disabled={disabled}
+            {...props}
+        >
+            {children}
+        </button>
+    );
+});
+Button.displayName = "Button";
+
+
+// Minimalistic MoodDisplay component
+const MoodDisplay = React.memo(({ state }: { state: string }) => {
+    const stateConfig = useMemo(() => ({
+        "no_data": { label: "NO DATA", color: "slate" },
+        "relaxed": { label: "RELAXED", color: "emerald" },
+        "focused": { label: "FOCUSED", color: "blue" },
+        "stressed": { label: "STRESSED", color: "red" },
+        "calm": { label: "CALM", color: "teal" }
+    }), []);
+    
+    const currentState = stateConfig[state as keyof typeof stateConfig] || stateConfig["no_data"];
+    
+    return (
+        <div className={cn(
+            "text-xs px-3 py-1.5 rounded-full font-bold transition-colors duration-300 flex items-center gap-1.5",
+            `bg-${currentState.color}-100/80 text-${currentState.color}-700 dark:bg-${currentState.color}-900/30 dark:text-${currentState.color}-300`
+        )}>
+            <div className={cn("w-2 h-2 rounded-full", `bg-${currentState.color}-500`)} />
+            {currentState.label}
+        </div>
+    );
+});
+MoodDisplay.displayName = "MoodDisplay";
+
+
+// Aesthetic WebGL Plot Canvas
+const WebglPlotCanvas = React.memo(React.forwardRef<any, any>(({ channels, color }, ref) => {
+    return (
+        <div className="w-full h-full bg-slate-50/50 dark:bg-slate-900/50 rounded-lg flex items-center justify-center relative overflow-hidden backdrop-blur-sm">
+            <div className="absolute inset-0 opacity-10">
+                <svg width="100%" height="100%" className="absolute inset-0">
+                    <defs>
+                        <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse">
+                            <path d="M 25 0 L 0 0 0 25" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-300 dark:text-slate-700"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#grid)" />
+                </svg>
+            </div>
+            <motion.div
+                className="relative z-10"
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            >
+                <Waves className={cn("h-6 w-6", `text-${color}-500`)} />
+            </motion.div>
+        </div>
+    );
+}));
+WebglPlotCanvas.displayName = "WebglPlotCanvas";
+
+
+// Main component with modern and minimalistic UI
+export default function BrainSignalVisualizer() {
+    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [isDeviceConnected, setIsDeviceConnected] = useState(false);
+    
+    const [currentBPM, setCurrentBPM] = useState("--");
+    const [currentHRV, setCurrentHRV] = useState("--");
+    const [currentMentalState, setCurrentMentalState] = useState("no_data");
+
+    // Memoized data
+    const radarData = useMemo(() => ({
+        left: [{ subject: "Alpha", value: 35 }, { subject: "Beta", value: 20 }, { subject: "Theta", value: 25 }, { subject: "Delta", value: 15 }, { subject: "Gamma", value: 5 }],
+        right: [{ subject: "Alpha", value: 32 }, { subject: "Beta", value: 23 }, { subject: "Theta", value: 22 }, { subject: "Delta", value: 18 }, { subject: "Gamma", value: 5 }]
+    }), []);
+    
+    const connectDevice = useCallback(() => setIsDeviceConnected(true), []);
+    const disconnectDevice = useCallback(() => setIsDeviceConnected(false), []);
+    
+    useEffect(() => {
+        if (isDeviceConnected) {
+            const interval = setInterval(() => {
+                setCurrentBPM(`${Math.floor(Math.random() * 15) + 60}`);
+                setCurrentHRV(`${Math.floor(Math.random() * 10) + 40}`);
+                const states = ["relaxed", "focused", "calm"];
+                setCurrentMentalState(states[Math.floor(Math.random() * states.length)]);
+            }, 2000);
+            return () => clearInterval(interval);
+        } else {
+            setCurrentBPM("--");
+            setCurrentHRV("--");
+            setCurrentMentalState("no_data");
+        }
+    }, [isDeviceConnected]);
+
+    const statsConfig = useMemo(() => [
+        { title: "Device Status", icon: Signal, value: isDeviceConnected ? "ONLINE" : "OFFLINE", color: isDeviceConnected ? "emerald" : "slate" },
+        { title: "Heart Rate", icon: Heart, value: currentBPM, unit: "BPM", color: "red" },
+        { title: "HRV", icon: Activity, value: currentHRV, unit: "MS", color: "blue" },
+        { title: "Mental State", icon: Brain, value: <MoodDisplay state={currentMentalState} />, color: "emerald" }
+    ], [isDeviceConnected, currentBPM, currentHRV, currentMentalState]);
+
+    const signalsConfig = useMemo(() => [
+        { title: "EEG Channel 1", subtitle: "FRONTAL", color: "emerald" },
+        { title: "EEG Channel 2", subtitle: "PARIETAL", color: "blue" },
+        { title: "ECG Signal", subtitle: "CARDIAC", color: "red" }
+    ], []);
+
+    return (
+        <div className={cn("h-screen overflow-hidden font-sans", isDarkMode ? "dark" : "")}>
+            <div className="h-full w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 transition-colors duration-300">
+                {/* Background Decor */}
+                <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-50">
+                    <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 rounded-full bg-emerald-300/10 blur-3xl animate-pulse" />
+                    <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 rounded-full bg-emerald-300/10 blur-3xl animate-pulse" style={{ animationDelay: '2s' }}/>
+                </div>
+
+                {/* Main Grid Layout */}
+                <div className="relative h-full w-full p-4 grid grid-cols-12 grid-rows-6 gap-4">
+                    
+                    {/* Header */}
+                    <motion.header 
+                        className="col-span-12 row-span-1 flex items-center justify-between"
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                    >
+                        <div className="flex items-center gap-4">
+                            <motion.div 
+                                className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 dark:bg-white shadow-lg"
+                                whileHover={{ scale: 1.1 }}
+                            >
+                                <Brain className="h-6 w-6 text-white dark:text-slate-900" />
+                            </motion.div>
+                            <div>
+                                <h1 className="text-2xl font-bold">Neural<span className="text-emerald-600 dark:text-emerald-400">Flow</span></h1>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Brain Monitoring Dashboard</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Button
+                                onClick={isDeviceConnected ? disconnectDevice : connectDevice}
+                                variant={isDeviceConnected ? "outline" : "accent"}
+                                size="md"
+                                className="gap-2"
+                            >
+                                {isDeviceConnected ? <PlugZap className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
+                                {isDeviceConnected ? "Disconnect" : "Connect"}
+                            </Button>
+                            <Button
+                                onClick={() => setIsDarkMode(p => !p)}
+                                variant="ghost"
+                                size="md"
+                                className="h-10 w-10 p-0"
+                            >
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={isDarkMode ? "moon" : "sun"}
+                                        initial={{ y: -20, opacity: 0 }}
+                                        animate={{ y: 0, opacity: 1 }}
+                                        exit={{ y: 20, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                    >
+                                        {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                                    </motion.div>
+                                </AnimatePresence>
+                            </Button>
+                        </div>
+                    </motion.header>
+                    
+                    {/* Stats */}
+                    {statsConfig.map((stat, index) => (
+                        <motion.div 
+                            key={stat.title}
+                            className="col-span-3 row-span-1 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 p-4 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:border-emerald-300/50 dark:hover:border-emerald-600/50"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={cn("p-2 rounded-lg", `bg-${stat.color}-100 dark:bg-${stat.color}-900/30`)}>
+                                    <stat.icon className={cn("h-5 w-5", `text-${stat.color}-600 dark:text-${stat.color}-400`)} />
+                                </div>
+                                <h3 className="font-semibold text-slate-600 dark:text-slate-300">{stat.title}</h3>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-3xl font-bold">
+                                    {stat.value}
+                                </div>
+                                {stat.unit && <p className="text-sm text-slate-500">{stat.unit}</p>}
+                            </div>
+                        </motion.div>
+                    ))}
+
+                    {/* Signal Plots */}
+                    {signalsConfig.map((signal, index) => (
+                        <motion.div 
+                            key={signal.title}
+                            className="col-span-4 row-span-2 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 p-4 flex flex-col transition-all duration-300 hover:shadow-xl hover:border-emerald-300/50 dark:hover:border-emerald-600/50"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <div className={cn("w-2.5 h-2.5 rounded-full", `bg-${signal.color}-500`)} />
+                                    <h4 className="font-semibold">{signal.title}</h4>
+                                    <span className="text-xs text-slate-500">{signal.subtitle}</span>
+                                </div>
+                                <div className="flex gap-1">
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0"><Maximize2 className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0"><Settings className="h-4 w-4" /></Button>
+                                </div>
+                            </div>
+                            <div className="flex-1">
+                                <WebglPlotCanvas color={signal.color} />
+                            </div>
+                        </motion.div>
+                    ))}
+
+                    {/* Brain Wave Analysis */}
+                    <motion.div 
+                        className="col-span-8 row-span-3 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 p-6 flex flex-col transition-all duration-300 hover:shadow-xl hover:border-emerald-300/50 dark:hover:border-emerald-600/50"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.4 }}
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                                    <Waves className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold">Brain Wave Analysis</h3>
+                                    <p className="text-sm text-slate-500">Real-time frequency distribution</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                                <motion.div 
+                                    className="w-2.5 h-2.5 rounded-full bg-emerald-500"
+                                    animate={{ scale: [1, 1.2, 1] }}
+                                    transition={{ duration: 1.5, repeat: Infinity }}
+                                />
+                                ACTIVE
+                            </div>
+                        </div>
+                        <div className="flex-1 grid grid-cols-2 gap-8">
+                            {['left', 'right'].map((hemisphere, hIndex) => (
+                                <div key={hemisphere} className="space-y-4">
+                                    <h5 className="font-semibold text-center">{hemisphere.charAt(0).toUpperCase() + hemisphere.slice(1)} Hemisphere</h5>
+                                    <div className="space-y-4">
+                                        {(hemisphere === 'left' ? radarData.left : radarData.right).map((band, bIndex) => (
+                                            <motion.div 
+                                                key={band.subject} 
+                                                className="space-y-1.5"
+                                                initial={{ opacity: 0, x: hIndex === 0 ? -20 : 20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ duration: 0.4, delay: 0.5 + bIndex * 0.1 }}
+                                            >
+                                                <div className="flex justify-between text-sm font-medium">
+                                                    <span>{band.subject}</span>
+                                                    <span>{band.value.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="relative h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        className="h-full bg-emerald-500"
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${band.value}%` }}
+                                                        transition={{ duration: 0.8, delay: 0.6 + bIndex * 0.1, ease: "easeOut" }}
+                                                    />
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+
+                    {/* Quick Actions */}
+                    <motion.div 
+                        className="col-span-4 row-span-3 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 p-6 flex flex-col gap-4 transition-all duration-300 hover:shadow-xl hover:border-emerald-300/50 dark:hover:border-emerald-600/50"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.5 }}
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                                <Sparkles className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <h3 className="text-xl font-bold">Session Control</h3>
+                        </div>
+                        <div className="flex-1 flex flex-col justify-end gap-3">
+                            <Button variant="outline" size="lg" className="gap-2 w-full"><Download className="h-5 w-5"/>Export Data</Button>
+                            <Button variant="outline" size="lg" className="gap-2 w-full"><Share2 className="h-5 w-5"/>Share Session</Button>
+                            <Button variant="outline" size="lg" className="gap-2 w-full"><RotateCcw className="h-5 w-5"/>Reset Session</Button>
+                        </div>
+                    </motion.div>
+                </div>
+            </div>
+        </div>
+    );
+}
