@@ -40,7 +40,8 @@ import {
   Filter,
   Signal,
   Bluetooth,
-  BluetoothConnected
+  BluetoothConnected,
+  Circle
 } from 'lucide-react';
 
 // Types
@@ -215,11 +216,11 @@ const EEGDataPlot: React.FC = () => {
   }, [isRecording]);
 
   const updateMoodState = useCallback((bpm: BPMData) => {
-    if (bmp.sdnn !== null && bmp.rmssd !== null && bmp.pnn50 !== null) {
+    if (bpm.sdnn !== null && bpm.rmssd !== null && bpm.pnn50 !== null) {
       const mood = predictState({
-        sdnn: bmp.sdnn,
-        rmssd: bmp.rmssd,
-        pnn50: bmp.pnn50
+        sdnn: bpm.sdnn,
+        rmssd: bpm.rmssd,
+        pnn50: bpm.pnn50
       });
       setCurrentMood(mood);
     }
@@ -241,232 +242,146 @@ const EEGDataPlot: React.FC = () => {
 
   // Render session results
   const renderSessionResults = (results: any) => (
-    <div className="space-y-4">
-      {/* Performance Overview */}
-      <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950 dark:to-green-950">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 text-sm">
-            <Award className="h-4 w-4" />
-            Session Performance
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-center">
-              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                {results.goodMeditationPct}%
-              </div>
-              <div className="text-xs text-muted-foreground">Quality</div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="text-center p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950">
+          <div className="text-lg font-bold text-emerald-600">{results.goodMeditationPct}%</div>
+          <div className="text-xs text-muted-foreground">Quality</div>
+        </div>
+        <div className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-950">
+          <div className="text-lg font-bold text-blue-600">{results.focusScore}</div>
+          <div className="text-xs text-muted-foreground">Focus</div>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {Object.entries(results.statePercentages).map(([state, percentage]) => (
+          <div key={state} className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="capitalize">{state}</span>
+              <span>{percentage}%</span>
             </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                {results.focusScore}
-              </div>
-              <div className="text-xs text-muted-foreground">Focus</div>
-            </div>
+            <Progress value={parseFloat(percentage)} className="h-1" />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Brain Wave Analysis */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Brain className="h-4 w-4 text-purple-600" />
-            Brain Waves
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="space-y-2">
-            {Object.entries(results.statePercentages).map(([state, percentage]) => (
-              <div key={state} className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="capitalize">{state}</span>
-                  <span className="font-medium">{percentage}%</span>
-                </div>
-                <Progress value={parseFloat(percentage)} className="h-1" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
     </div>
   );
 
   const getSignalQualityColor = () => {
     switch (signalQuality) {
-      case 'excellent': return 'bg-green-500';
-      case 'good': return 'bg-yellow-500';
-      case 'poor': return 'bg-orange-500';
-      default: return 'bg-red-500';
+      case 'excellent': return 'text-green-500';
+      case 'good': return 'text-yellow-500';
+      case 'poor': return 'text-orange-500';
+      default: return 'text-red-500';
     }
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex flex-col">
-      {/* Fixed Header */}
-      <div className="flex-none p-3">
-        <Card className="border-0 shadow-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                  <Brain className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    HealthFit Pro
-                  </CardTitle>
-                  <CardDescription className="text-sm">
-                    EEG & Biometric Analysis
-                  </CardDescription>
-                </div>
-              </div>
-
-              {/* Status Indicators */}
-              <div className="flex items-center gap-3">
-                {/* Connection Status */}
-                <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700">
-                  {bluetooth.connected ? (
-                    <>
-                      <BluetoothConnected className="h-4 w-4 text-blue-600" />
-                      <span className="text-xs font-medium text-blue-600">Connected</span>
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                    </>
-                  ) : (
-                    <>
-                      <Bluetooth className="h-4 w-4 text-red-500" />
-                      <span className="text-xs font-medium text-red-500">Disconnected</span>
-                    </>
-                  )}
-                </div>
-
-                {/* Signal Quality */}
-                <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700">
-                  <Signal className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                  <span className="text-xs font-medium capitalize">{signalQuality}</span>
-                  <div className={`w-1.5 h-1.5 rounded-full ${getSignalQualityColor()}`}></div>
-                </div>
-
-                {/* Recording Status */}
-                {isRecording && (
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-gradient-to-r from-red-100 to-pink-100 dark:from-red-900 dark:to-pink-900">
-                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-medium text-red-600 dark:text-red-400">Recording</span>
-                  </div>
-                )}
-              </div>
+    <div className="h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-900 flex flex-col">
+      {/* Minimal Header */}
+      <div className="flex-none h-16 px-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <div className="h-full flex items-center justify-between">
+          {/* Logo & Title */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+              <Brain className="h-4 w-4 text-white" />
             </div>
-
-            {/* Control Panel */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={bluetooth.connected ? bluetooth.disconnect : bluetooth.connect}
-                  size="sm"
-                  className={`px-4 py-2 font-semibold shadow-md transition-all duration-300 ${
-                    bluetooth.connected 
-                      ? 'bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700' 
-                      : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
-                  }`}
-                >
-                  {bluetooth.connected ? (
-                    <>
-                      <WifiOff className="mr-1 h-4 w-4" />
-                      Disconnect
-                    </>
-                  ) : (
-                    <>
-                      <Wifi className="mr-1 h-4 w-4" />
-                      Connect
-                    </>
-                  )}
-                </Button>
-
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                  <span className="text-xs font-medium">Filters</span>
-                  <Switch checked={showFilters} onCheckedChange={setShowFilters} />
-                </div>
-              </div>
-
-              {/* Quote Display */}
-              <div className="max-w-xs text-right">
-                <p className="text-xs italic text-slate-600 dark:text-slate-400 truncate">
-                  "{currentQuote.text}"
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-500">
-                  — {currentQuote.author}
-                </p>
-              </div>
+            <div>
+              <h1 className="text-lg font-semibold text-slate-900 dark:text-white">HealthFit</h1>
             </div>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 min-h-0 p-3 pt-0">
-        <div className="h-full grid grid-cols-12 gap-3">
-          {/* Left Column - Visualizations */}
-          <div className="col-span-8 flex flex-col gap-3">
-            {/* EEG Signal Display */}
-            <Card className="flex-1 border-0 shadow-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Waves className="h-4 w-4 text-blue-600" />
-                  EEG Signal Monitor
-                  <Badge variant="secondary" className="ml-auto text-xs">
-                    Real-time
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 min-h-0">
-                <div className="h-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
-                  <WebglPlotCanvas
-                    ref={eegCanvasRef}
-                    channels={[0]}
-                    colors={{ 0: '#3b82f6' }}
-                    gridnumber={10}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* HRV Display */}
-            <Card className="flex-1 border-0 shadow-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Heart className="h-4 w-4 text-red-600" />
-                  Heart Rate Variability
-                  <Badge variant="secondary" className="ml-auto text-xs">
-                    {bpmData.bpm ? `${bpmData.bpm} BPM` : 'No Signal'}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 min-h-0">
-                <div className="h-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
-                  <HeartRateVariabilityCanvas
-                    ref={hrvCanvasRef}
-                    dataPointCount={2000}
-                    lineColor="#ef4444"
-                    isDarkTheme={false}
-                  />
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
-          {/* Right Column - Analytics & Controls */}
-          <div className="col-span-4 flex flex-col gap-3">
+          {/* Status Bar */}
+          <div className="flex items-center gap-4">
+            {/* Connection */}
+            <div className="flex items-center gap-2">
+              <Circle className={`h-2 w-2 ${bluetooth.connected ? 'fill-green-500 text-green-500' : 'fill-red-500 text-red-500'}`} />
+              <span className="text-sm text-slate-600 dark:text-slate-400">
+                {bluetooth.connected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+
+            {/* Signal Quality */}
+            <div className="flex items-center gap-2">
+              <Signal className={`h-4 w-4 ${getSignalQualityColor()}`} />
+              <span className="text-sm text-slate-600 dark:text-slate-400 capitalize">{signalQuality}</span>
+            </div>
+
+            {/* Recording Status */}
+            {isRecording && (
+              <div className="flex items-center gap-2">
+                <Circle className="h-2 w-2 fill-red-500 text-red-500 animate-pulse" />
+                <span className="text-sm text-red-600">Recording</span>
+              </div>
+            )}
+
+            {/* Connect Button */}
+            <Button
+              onClick={bluetooth.connected ? bluetooth.disconnect : bluetooth.connect}
+              size="sm"
+              variant={bluetooth.connected ? "destructive" : "default"}
+            >
+              {bluetooth.connected ? 'Disconnect' : 'Connect'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 min-h-0 p-4">
+        <div className="h-full grid grid-cols-12 gap-4">
+          {/* Left Panel - Visualizations */}
+          <div className="col-span-8 flex flex-col gap-4">
+            {/* EEG Signal */}
+            <div className="flex-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="h-12 px-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Waves className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium text-slate-900 dark:text-white">EEG Signal</span>
+                </div>
+                <Badge variant="secondary" className="text-xs">Live</Badge>
+              </div>
+              <div className="h-[calc(100%-3rem)]">
+                <WebglPlotCanvas
+                  ref={eegCanvasRef}
+                  channels={[0]}
+                  colors={{ 0: '#3b82f6' }}
+                  gridnumber={10}
+                />
+              </div>
+            </div>
+
+            {/* HRV Signal */}
+            <div className="flex-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="h-12 px-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-red-600" />
+                  <span className="font-medium text-slate-900 dark:text-white">Heart Rate Variability</span>
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  {bpmData.bpm ? `${bpmData.bpm} BPM` : 'No Signal'}
+                </Badge>
+              </div>
+              <div className="h-[calc(100%-3rem)]">
+                <HeartRateVariabilityCanvas
+                  ref={hrvCanvasRef}
+                  dataPointCount={2000}
+                  lineColor="#ef4444"
+                  isDarkTheme={false}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel - Controls & Data */}
+          <div className="col-span-4 flex flex-col gap-4">
             {/* Meditation Session */}
-            <Card className="flex-1 border-0 shadow-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Target className="h-4 w-4 text-purple-600" />
-                  Meditation Session
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 min-h-0 p-0">
+            <div className="flex-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="h-12 px-4 border-b border-slate-200 dark:border-slate-700 flex items-center">
+                <Target className="h-4 w-4 text-purple-600 mr-2" />
+                <span className="font-medium text-slate-900 dark:text-white">Meditation</span>
+              </div>
+              <div className="h-[calc(100%-3rem)] p-4">
                 <MeditationSession
                   onStartSession={handleStartSession}
                   onEndSession={handleEndSession}
@@ -478,72 +393,61 @@ const EEGDataPlot: React.FC = () => {
                   darkMode={false}
                   renderSessionResults={renderSessionResults}
                 />
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Biometric Dashboard */}
-            <Card className="flex-1 border-0 shadow-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Activity className="h-4 w-4 text-emerald-600" />
-                  Biometric Dashboard
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 min-h-0 space-y-3">
-                {/* Current Mood */}
-                <div className="text-center p-2 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
-                  <div className="text-xs font-medium text-muted-foreground mb-1">Current State</div>
-                  <MoodDisplay state={currentMood} />
+            {/* Current State */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="h-4 w-4 text-emerald-600" />
+                <span className="font-medium text-slate-900 dark:text-white">Current State</span>
+              </div>
+              <div className="text-center">
+                <MoodDisplay state={currentMood} />
+              </div>
+            </div>
+
+            {/* Biometrics */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+                <span className="font-medium text-slate-900 dark:text-white">Biometrics</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="text-center p-2 rounded bg-red-50 dark:bg-red-950">
+                  <div className="text-lg font-bold text-red-600">{bpmData.bpm || '--'}</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">BPM</div>
                 </div>
-
-                {/* HRV Metrics */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="text-center p-2 rounded-lg bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-950 dark:to-pink-950">
-                    <Heart className="h-3 w-3 mx-auto mb-1 text-red-600" />
-                    <div className="text-sm font-bold text-red-700 dark:text-red-300">
-                      {bpmData.bpm || '--'}
+                <div className="text-center p-2 rounded bg-orange-50 dark:bg-orange-950">
+                  <div className="text-lg font-bold text-orange-600">{bpmData.hrv || '--'}</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">HRV</div>
+                </div>
+              </div>
+              
+              {/* Brain Waves */}
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Brain Waves</div>
+                {Object.entries(bandPowers.smooth0).slice(0, 4).map(([band, power]) => (
+                  <div key={band} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="capitalize">{band}</span>
+                      <span>{(power * 100).toFixed(1)}%</span>
                     </div>
-                    <div className="text-xs text-muted-foreground">BPM</div>
+                    <Progress value={power * 100} className="h-1" />
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950 dark:to-yellow-950">
-                    <TrendingUp className="h-3 w-3 mx-auto mb-1 text-orange-600" />
-                    <div className="text-sm font-bold text-orange-700 dark:text-orange-300">
-                      {bpmData.hrv || '--'}
-                    </div>
-                    <div className="text-xs text-muted-foreground">HRV</div>
-                  </div>
-                </div>
-
-                {/* Brain Wave Powers */}
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-center">Brain Wave Activity</div>
-                  {Object.entries(bandPowers.smooth0).map(([band, power]) => (
-                    <div key={band} className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="capitalize font-medium">{band}</span>
-                        <span className="text-muted-foreground">{(power * 100).toFixed(1)}%</span>
-                      </div>
-                      <Progress value={power * 100} className="h-1" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Results Modal */}
       <Dialog open={showResults} onOpenChange={setShowResults}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              Session Results
-            </DialogTitle>
-            <DialogDescription>
-              Comprehensive analysis of your meditation session
-            </DialogDescription>
+            <DialogTitle>Session Results</DialogTitle>
+            <DialogDescription>Your meditation session analysis</DialogDescription>
           </DialogHeader>
           {sessionResults && renderSessionResults(sessionResults)}
         </DialogContent>
