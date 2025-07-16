@@ -17,9 +17,9 @@ import {
 // BLE Configuration Constants
 const BLE_SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
 const SENSOR_DATA_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-const CONTROL_CHAR_UUID = 'your-control-characteristic-uuid'; // Add your control characteristic UUID
+const CONTROL_CHAR_UUID = 'your-control-characteristic-uuid';
 
-// Modern Button component
+// Button component (keeping local until AppButton is confirmed to exist)
 interface ButtonProps {
     children: React.ReactNode;
     onClick?: () => void;
@@ -29,7 +29,7 @@ interface ButtonProps {
     disabled?: boolean;
 }
 
-const Button: React.FC<ButtonProps> = React.memo(({ 
+const Button: React.FC<ButtonProps> = ({ 
     children, 
     onClick, 
     variant = "default", 
@@ -63,37 +63,75 @@ const Button: React.FC<ButtonProps> = React.memo(({
             {children}
         </button>
     );
-});
-Button.displayName = "Button";
+};
+
+// Static color mappings for MoodDisplay
+const moodColorClasses = {
+    slate: {
+        container: "bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300",
+        dot: "bg-slate-500"
+    },
+    emerald: {
+        container: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
+        dot: "bg-emerald-500"
+    },
+    blue: {
+        container: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+        dot: "bg-blue-500"
+    },
+    red: {
+        container: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+        dot: "bg-red-500"
+    },
+    teal: {
+        container: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
+        dot: "bg-teal-500"
+    }
+};
 
 // Minimalistic MoodDisplay component
 const MoodDisplay = React.memo(({ state }: { state: string }) => {
-    const stateConfig = useMemo(() => ({
+    const stateConfig = {
         "no_data": { label: "NO DATA", color: "slate" },
         "relaxed": { label: "RELAXED", color: "emerald" },
         "focused": { label: "FOCUSED", color: "blue" },
         "stressed": { label: "STRESSED", color: "red" },
         "calm": { label: "CALM", color: "teal" }
-    }), []);
+    };
     
     const currentState = stateConfig[state as keyof typeof stateConfig] || stateConfig["no_data"];
+    const colorClasses = moodColorClasses[currentState.color as keyof typeof moodColorClasses];
     
     return (
         <div className={cn(
             "text-xs px-3 py-1.5 rounded-full font-bold transition-colors duration-300 flex items-center gap-1.5",
-            `bg-${currentState.color}-100/80 text-${currentState.color}-700 dark:bg-${currentState.color}-900/30 dark:text-${currentState.color}-300`
+            colorClasses.container
         )}>
-            <div className={cn("w-2 h-2 rounded-full", `bg-${currentState.color}-500`)} />
+            <div className={cn("w-2 h-2 rounded-full", colorClasses.dot)} />
             {currentState.label}
         </div>
     );
 });
 MoodDisplay.displayName = "MoodDisplay";
 
-// Aesthetic WebGL Plot Canvas
-const WebglPlotCanvas = React.memo(React.forwardRef<any, any>(({ channels, color }, ref) => {
+// SignalPlotPlaceholder component with proper typing
+interface SignalPlotPlaceholderProps {
+    channels?: number[];
+    color?: string;
+}
+
+const SignalPlotPlaceholder = React.memo(React.forwardRef<HTMLDivElement, SignalPlotPlaceholderProps>(({ channels, color = 'emerald' }, ref) => {
+    const getWaveColorClass = (color: string) => {
+        switch (color) {
+            case 'emerald': return 'text-emerald-500';
+            case 'blue': return 'text-blue-500';
+            case 'red': return 'text-red-500';
+            default: return 'text-emerald-500';
+        }
+    };
+    
     return (
-        <div className="w-full h-full bg-slate-50/50 dark:bg-slate-900/50 rounded-lg flex items-center justify-center relative overflow-hidden backdrop-blur-sm">
+        <div ref={ref} className="w-full h-full bg-slate-50 dark:bg-slate-900 rounded-lg flex items-center justify-center relative overflow-hidden backdrop-blur-sm">
             <div className="absolute inset-0 opacity-10">
                 <svg width="100%" height="100%" className="absolute inset-0">
                     <defs>
@@ -109,14 +147,44 @@ const WebglPlotCanvas = React.memo(React.forwardRef<any, any>(({ channels, color
                 animate={{ opacity: [0.6, 1, 0.6] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
             >
-                <Waves className={cn("h-6 w-6", `text-${color}-500`)} />
+                <Waves className={cn("h-6 w-6", getWaveColorClass(color))} />
             </motion.div>
         </div>
     );
 }));
-WebglPlotCanvas.displayName = "WebglPlotCanvas";
+SignalPlotPlaceholder.displayName = "SignalPlotPlaceholder";
 
-// Main component with Web Bluetooth integration
+// Static color mappings for stats
+const statColorClasses = {
+    slate: {
+        background: "bg-slate-100 dark:bg-slate-900",
+        text: "text-slate-600 dark:text-slate-400"
+    },
+    emerald: {
+        background: "bg-emerald-100 dark:bg-emerald-900",
+        text: "text-emerald-600 dark:text-emerald-400"
+    },
+    red: {
+        background: "bg-red-100 dark:bg-red-900",
+        text: "text-red-600 dark:text-red-400"
+    },
+    blue: {
+        background: "bg-blue-100 dark:bg-blue-900",
+        text: "text-blue-600 dark:text-blue-400"
+    }
+};
+
+// Helper function for signal dot colors
+const getSignalDotClass = (color: string) => {
+    switch (color) {
+        case 'emerald': return 'bg-emerald-500';
+        case 'blue': return 'bg-blue-500';
+        case 'red': return 'bg-red-500';
+        default: return 'bg-emerald-500';
+    }
+};
+
+// Main component
 export default function BrainSignalVisualizer() {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isDeviceConnected, setIsDeviceConnected] = useState(false);
@@ -139,8 +207,20 @@ export default function BrainSignalVisualizer() {
 
     // Memoized data
     const radarData = useMemo(() => ({
-        left: [{ subject: "Alpha", value: 35 }, { subject: "Beta", value: 20 }, { subject: "Theta", value: 25 }, { subject: "Delta", value: 15 }, { subject: "Gamma", value: 5 }],
-        right: [{ subject: "Alpha", value: 32 }, { subject: "Beta", value: 23 }, { subject: "Theta", value: 22 }, { subject: "Delta", value: 18 }, { subject: "Gamma", value: 5 }]
+        left: [
+            { subject: "Alpha", value: 35 }, 
+            { subject: "Beta", value: 20 }, 
+            { subject: "Theta", value: 25 }, 
+            { subject: "Delta", value: 15 }, 
+            { subject: "Gamma", value: 5 }
+        ],
+        right: [
+            { subject: "Alpha", value: 32 }, 
+            { subject: "Beta", value: 23 }, 
+            { subject: "Theta", value: 22 }, 
+            { subject: "Delta", value: 18 }, 
+            { subject: "Gamma", value: 5 }
+        ]
     }), []);
     
     // Web Bluetooth connection function
@@ -153,7 +233,6 @@ export default function BrainSignalVisualizer() {
         setIsConnecting(true);
 
         try {
-            // Request Bluetooth device - this will show the device selection popup
             const device = await navigator.bluetooth.requestDevice({
                 filters: [
                     { services: [BLE_SERVICE_UUID] },
@@ -169,27 +248,19 @@ export default function BrainSignalVisualizer() {
             });
 
             console.log('Selected device:', device);
-
-            // Connect to the device
             const server = await device.gatt?.connect();
             console.log('Connected to GATT server');
 
-            // Get the service
             const service = await server?.getPrimaryService(BLE_SERVICE_UUID);
-            
-            // Get the characteristic for sensor data
             const sensorCharacteristic = await service?.getCharacteristic(SENSOR_DATA_UUID);
             
-            // Start notifications for real-time data
             await sensorCharacteristic?.startNotifications();
             sensorCharacteristic?.addEventListener('characteristicvaluechanged', handleSensorDataReceived);
 
-            // Set connection state
             setBluetoothDevice(device);
             setIsDeviceConnected(true);
             setCurrentMentalState("focused");
 
-            // Handle disconnection
             device.addEventListener('gattserverdisconnected', handleDeviceDisconnected);
 
         } catch (error) {
@@ -208,19 +279,15 @@ export default function BrainSignalVisualizer() {
         const value = target.value;
         
         if (value) {
-            // Parse the received data according to your device's protocol
             const rawData = new Uint8Array(value.buffer);
             
-            // Example parsing - adjust based on your device's data format
             try {
-                // Assuming your device sends structured data
-                const bpm = rawData[0] + 60; // Example BPM calculation
-                const hrv = rawData[1] + 30; // Example HRV calculation
+                const bpm = rawData[0] + 60;
+                const hrv = rawData[1] + 30;
                 
                 setCurrentBPM(bpm.toString());
                 setCurrentHRV(hrv.toString());
                 
-                // Update mental state based on data patterns
                 if (bpm < 70 && hrv > 40) {
                     setCurrentMentalState("relaxed");
                 } else if (bpm > 80) {
@@ -342,28 +409,31 @@ export default function BrainSignalVisualizer() {
                     </motion.header>
                     
                     {/* Stats */}
-                    {statsConfig.map((stat, index) => (
-                        <motion.div 
-                            key={stat.title}
-                            className="col-span-3 row-span-1 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 p-4 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:border-emerald-300/50 dark:hover:border-emerald-600/50"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={cn("p-2 rounded-lg", `bg-${stat.color}-100 dark:bg-${stat.color}-900/30`)}>
-                                    <stat.icon className={cn("h-5 w-5", `text-${stat.color}-600 dark:text-${stat.color}-400`)} />
+                    {statsConfig.map((stat, index) => {
+                        const colorClasses = statColorClasses[stat.color as keyof typeof statColorClasses];
+                        return (
+                            <motion.div 
+                                key={stat.title}
+                                className="col-span-3 row-span-1 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 p-4 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:border-emerald-300/50 dark:hover:border-emerald-600/50"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={cn("p-2 rounded-lg", colorClasses.background)}>
+                                        <stat.icon className={cn("h-5 w-5", colorClasses.text)} />
+                                    </div>
+                                    <h3 className="font-semibold text-slate-600 dark:text-slate-300">{stat.title}</h3>
                                 </div>
-                                <h3 className="font-semibold text-slate-600 dark:text-slate-300">{stat.title}</h3>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-3xl font-bold">
-                                    {stat.value}
+                                <div className="text-right">
+                                    <div className="text-3xl font-bold">
+                                        {stat.value}
+                                    </div>
+                                    {stat.unit && <p className="text-sm text-slate-500">{stat.unit}</p>}
                                 </div>
-                                {stat.unit && <p className="text-sm text-slate-500">{stat.unit}</p>}
-                            </div>
-                        </motion.div>
-                    ))}
+                            </motion.div>
+                        );
+                    })}
 
                     {/* Signal Plots */}
                     {signalsConfig.map((signal, index) => (
@@ -376,7 +446,7 @@ export default function BrainSignalVisualizer() {
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                    <div className={cn("w-2.5 h-2.5 rounded-full", `bg-${signal.color}-500`)} />
+                                    <div className={cn("w-2.5 h-2.5 rounded-full", getSignalDotClass(signal.color))} />
                                     <h4 className="font-semibold">{signal.title}</h4>
                                     <span className="text-xs text-slate-500">{signal.subtitle}</span>
                                 </div>
@@ -386,7 +456,7 @@ export default function BrainSignalVisualizer() {
                                 </div>
                             </div>
                             <div className="flex-1">
-                                <WebglPlotCanvas color={signal.color} />
+                                <SignalPlotPlaceholder color={signal.color} />
                             </div>
                         </motion.div>
                     ))}
