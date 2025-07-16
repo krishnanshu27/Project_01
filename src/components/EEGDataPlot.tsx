@@ -14,6 +14,11 @@ import {
     Download, Share2, Monitor, Sparkles, RotateCcw
 } from 'lucide-react';
 
+// BLE Configuration Constants
+const BLE_SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+const SENSOR_DATA_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+const CONTROL_CHAR_UUID = 'your-control-characteristic-uuid'; // Add your control characteristic UUID
+
 // Modern Button component
 interface ButtonProps {
     children: React.ReactNode;
@@ -61,7 +66,6 @@ const Button: React.FC<ButtonProps> = React.memo(({
 });
 Button.displayName = "Button";
 
-
 // Minimalistic MoodDisplay component
 const MoodDisplay = React.memo(({ state }: { state: string }) => {
     const stateConfig = useMemo(() => ({
@@ -85,7 +89,6 @@ const MoodDisplay = React.memo(({ state }: { state: string }) => {
     );
 });
 MoodDisplay.displayName = "MoodDisplay";
-
 
 // Aesthetic WebGL Plot Canvas
 const WebglPlotCanvas = React.memo(React.forwardRef<any, any>(({ channels, color }, ref) => {
@@ -113,15 +116,26 @@ const WebglPlotCanvas = React.memo(React.forwardRef<any, any>(({ channels, color
 }));
 WebglPlotCanvas.displayName = "WebglPlotCanvas";
 
-
-// Main component with modern and minimalistic UI
+// Main component with Web Bluetooth integration
 export default function BrainSignalVisualizer() {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isDeviceConnected, setIsDeviceConnected] = useState(false);
+    const [bluetoothDevice, setBluetoothDevice] = useState<BluetoothDevice | null>(null);
+    const [bluetoothSupported, setBluetoothSupported] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(false);
     
     const [currentBPM, setCurrentBPM] = useState("--");
     const [currentHRV, setCurrentHRV] = useState("--");
     const [currentMentalState, setCurrentMentalState] = useState("no_data");
+
+    // Check Bluetooth support
+    useEffect(() => {
+        if ('bluetooth' in navigator) {
+            navigator.bluetooth.getAvailability().then(available => {
+                setBluetoothSupported(available);
+            });
+        }
+    }, []);
 
     // Memoized data
     const radarData = useMemo(() => ({
@@ -129,24 +143,118 @@ export default function BrainSignalVisualizer() {
         right: [{ subject: "Alpha", value: 32 }, { subject: "Beta", value: 23 }, { subject: "Theta", value: 22 }, { subject: "Delta", value: 18 }, { subject: "Gamma", value: 5 }]
     }), []);
     
-    const connectDevice = useCallback(() => setIsDeviceConnected(true), []);
-    const disconnectDevice = useCallback(() => setIsDeviceConnected(false), []);
-    
-    useEffect(() => {
-        if (isDeviceConnected) {
-            const interval = setInterval(() => {
-                setCurrentBPM(`${Math.floor(Math.random() * 15) + 60}`);
-                setCurrentHRV(`${Math.floor(Math.random() * 10) + 40}`);
-                const states = ["relaxed", "focused", "calm"];
-                setCurrentMentalState(states[Math.floor(Math.random() * states.length)]);
-            }, 2000);
-            return () => clearInterval(interval);
-        } else {
-            setCurrentBPM("--");
-            setCurrentHRV("--");
-            setCurrentMentalState("no_data");
+    // Web Bluetooth connection function
+    const connectDevice = useCallback(async () => {
+        if (!bluetoothSupported) {
+            alert('Web Bluetooth is not supported on this device/browser');
+            return;
         }
-    }, [isDeviceConnected]);
+
+        setIsConnecting(true);
+
+        try {
+            // Request Bluetooth device - this will show the device selection popup
+            const device = await navigator.bluetooth.requestDevice({
+                filters: [
+                    { services: [BLE_SERVICE_UUID] },
+                    { namePrefix: 'EEG' },
+                    { namePrefix: 'Neural' },
+                    { namePrefix: 'Brain' }
+                ],
+                optionalServices: [
+                    'battery_service',
+                    'device_information',
+                    BLE_SERVICE_UUID
+                ]
+            });
+
+            console.log('Selected device:', device);
+
+            // Connect to the device
+            const server = await device.gatt?.connect();
+            console.log('Connected to GATT server');
+
+            // Get the service
+            const service = await server?.getPrimaryService(BLE_SERVICE_UUID);
+            
+            // Get the characteristic for sensor data
+            const sensorCharacteristic = await service?.getCharacteristic(SENSOR_DATA_UUID);
+            
+            // Start notifications for real-time data
+            await sensorCharacteristic?.startNotifications();
+            sensorCharacteristic?.addEventListener('characteristicvaluechanged', handleSensorDataReceived);
+
+            // Set connection state
+            setBluetoothDevice(device);
+            setIsDeviceConnected(true);
+            setCurrentMentalState("focused");
+
+            // Handle disconnection
+            device.addEventListener('gattserverdisconnected', handleDeviceDisconnected);
+
+        } catch (error) {
+            console.error('Bluetooth connection failed:', error);
+            if (error instanceof Error) {
+                alert('Failed to connect to device: ' + error.message);
+            }
+        } finally {
+            setIsConnecting(false);
+        }
+    }, [bluetoothSupported]);
+
+    // Handle incoming sensor data
+    const handleSensorDataReceived = useCallback((event: Event) => {
+        const target = event.target as BluetoothRemoteGATTCharacteristic;
+        const value = target.value;
+        
+        if (value) {
+            // Parse the received data according to your device's protocol
+            const rawData = new Uint8Array(value.buffer);
+            
+            // Example parsing - adjust based on your device's data format
+            try {
+                // Assuming your device sends structured data
+                const bpm = rawData[0] + 60; // Example BPM calculation
+                const hrv = rawData[1] + 30; // Example HRV calculation
+                
+                setCurrentBPM(bpm.toString());
+                setCurrentHRV(hrv.toString());
+                
+                // Update mental state based on data patterns
+                if (bpm < 70 && hrv > 40) {
+                    setCurrentMentalState("relaxed");
+                } else if (bpm > 80) {
+                    setCurrentMentalState("stressed");
+                } else {
+                    setCurrentMentalState("focused");
+                }
+            } catch (error) {
+                console.error('Error parsing sensor data:', error);
+            }
+        }
+    }, []);
+
+    // Handle device disconnection
+    const handleDeviceDisconnected = useCallback(() => {
+        console.log('Device disconnected');
+        setIsDeviceConnected(false);
+        setBluetoothDevice(null);
+        setCurrentBPM("--");
+        setCurrentHRV("--");
+        setCurrentMentalState("no_data");
+    }, []);
+
+    // Disconnect function
+    const disconnectDevice = useCallback(() => {
+        if (bluetoothDevice && bluetoothDevice.gatt?.connected) {
+            bluetoothDevice.gatt.disconnect();
+        }
+        setBluetoothDevice(null);
+        setIsDeviceConnected(false);
+        setCurrentBPM("--");
+        setCurrentHRV("--");
+        setCurrentMentalState("no_data");
+    }, [bluetoothDevice]);
 
     const statsConfig = useMemo(() => [
         { title: "Device Status", icon: Signal, value: isDeviceConnected ? "ONLINE" : "OFFLINE", color: isDeviceConnected ? "emerald" : "slate" },
@@ -198,9 +306,19 @@ export default function BrainSignalVisualizer() {
                                 variant={isDeviceConnected ? "outline" : "accent"}
                                 size="md"
                                 className="gap-2"
+                                disabled={isConnecting}
                             >
-                                {isDeviceConnected ? <PlugZap className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
-                                {isDeviceConnected ? "Disconnect" : "Connect"}
+                                {isConnecting ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                                        Connecting...
+                                    </>
+                                ) : (
+                                    <>
+                                        {isDeviceConnected ? <PlugZap className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
+                                        {isDeviceConnected ? "Disconnect" : "Connect"}
+                                    </>
+                                )}
                             </Button>
                             <Button
                                 onClick={() => setIsDarkMode(p => !p)}
@@ -296,7 +414,7 @@ export default function BrainSignalVisualizer() {
                                     animate={{ scale: [1, 1.2, 1] }}
                                     transition={{ duration: 1.5, repeat: Infinity }}
                                 />
-                                ACTIVE
+                                {isDeviceConnected ? "ACTIVE" : "STANDBY"}
                             </div>
                         </div>
                         <div className="flex-1 grid grid-cols-2 gap-8">
@@ -314,13 +432,13 @@ export default function BrainSignalVisualizer() {
                                             >
                                                 <div className="flex justify-between text-sm font-medium">
                                                     <span>{band.subject}</span>
-                                                    <span>{band.value.toFixed(1)}%</span>
+                                                    <span>{isDeviceConnected ? band.value.toFixed(1) : '--'}%</span>
                                                 </div>
                                                 <div className="relative h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                                     <motion.div
                                                         className="h-full bg-emerald-500"
                                                         initial={{ width: 0 }}
-                                                        animate={{ width: `${band.value}%` }}
+                                                        animate={{ width: isDeviceConnected ? `${band.value}%` : '0%' }}
                                                         transition={{ duration: 0.8, delay: 0.6 + bIndex * 0.1, ease: "easeOut" }}
                                                     />
                                                 </div>
