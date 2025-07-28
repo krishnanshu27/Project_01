@@ -13,14 +13,16 @@ import { Card as UICard, CardContent as UICardContent, CardDescription as UICard
 
 import { Tabs as UITabs, TabsContent as UITabsContent, TabsList as UITabsList, TabsTrigger as UITabsTrigger } from '@/components/ui/tabs';
 
-import { useBluetoothDataStream as useBluetoothStream } from '../components/Bledata';
-import WebglPlotCanvas from '../components/WebglPlotCanvas';
+import { useBluetoothDataStream as useBluetoothStream } from './Bledata';
+import WebglPlotCanvas from './WebglPlotCanvas';
 
-import { WebglPlotCanvasHandle as PlotCanvasHandle } from "../components/WebglPlotCanvas";
+import { WebglPlotCanvasHandle as PlotCanvasHandle } from "./WebglPlotCanvas";
 import HeartRateVariabilityCanvas, { HeartRateVariabilityHandle as HRVCanvasHandle } from '@/components/Hrvwebglplot'
 import { MoodDisplay, EmotionalState } from "./StateIndicator";
 import { predictState as predictMentalState } from "@/lib/stateClassifier";
 import { useRouter as useLocalRouter } from 'next/navigation';
+import { Eye, EyeOff } from "lucide-react";
+import StreamingDuration from "./StreamingDuration";
 
 export default function BrainSignalVisualizer() {
     const [isDarkMode, setIsDarkMode] = useLocalState(false);
@@ -88,6 +90,9 @@ export default function BrainSignalVisualizer() {
     const SAMPLES_PER_SECOND = 500;
     const FFT_WINDOW_SIZE = 256;
     const sampleIndexRef = useLocalRef(0);
+    const [mentalLoadIndex, setMentalLoadIndex] = useLocalState<"Stressed/Fatigued" | "Normal">("Normal");
+    const [mindBodyBalance, setMindBodyBalance] = useLocalState<number | null>(null);
+    const [showPlotting, setShowPlotting] = useLocalState(true);
 
     useLocalEffect(() => {
         goalSelectedRef.current = goalSelected;
@@ -338,6 +343,39 @@ export default function BrainSignalVisualizer() {
                     lastMentalStateUpdateRef.current = now;
                 }
             }
+
+            // Get latest beta value (from radarCh0DataRef or radarCh1DataRef)
+            const beta =
+                (radarCh0DataRef.current.find(d => d.subject === "Beta")?.value ?? 0) +
+                (radarCh1DataRef.current.find(d => d.subject === "Beta")?.value ?? 0);
+
+            // Simple thresholds (adjust as needed)
+            const isHighBeta = beta > 0.6;
+            const isHighHR = (bpm ?? 0) > 90;
+            const isLowHRV = (hrv ?? 100) < 40;
+
+            if (isHighBeta && isHighHR && isLowHRV) {
+                setMentalLoadIndex("Stressed/Fatigued");
+            } else {
+                setMentalLoadIndex("Normal");
+            }
+
+            // Get latest alpha and theta values (from radarCh0DataRef and radarCh1DataRef)
+            const alpha =
+                (radarCh0DataRef.current.find(d => d.subject === "Alpha")?.value ?? 0) +
+                (radarCh1DataRef.current.find(d => d.subject === "Alpha")?.value ?? 0);
+            const theta =
+                (radarCh0DataRef.current.find(d => d.subject === "Theta")?.value ?? 0) +
+                (radarCh1DataRef.current.find(d => d.subject === "Theta")?.value ?? 0);
+
+            // Normalize EEG and HRV values (adjust denominator as needed for your data range)
+            const normEEG = (alpha + theta) / 2; // assuming values are 0-1
+            const normHRV = rmssd / 100; // or sdnn / 100, adjust scaling as needed
+
+            // Combine for Mind-Body Balance Score (simple average, adjust formula as needed)
+            const balanceScore = Math.round(((normEEG + normHRV) / 2) * 100); // 0-100 scale
+
+            setMindBodyBalance(balanceScore);
         };
 
         bpmWorkerRef.current = worker;
@@ -379,6 +417,42 @@ export default function BrainSignalVisualizer() {
         };
     }, [handleNewSample, handleNewECG]);
 
+    function BrainwaveCircle({ label, value }: { label: string; value: number }) {
+        // Clamp value to 0-100 for percent
+        const percent = Math.round(Math.max(0, Math.min(100, value * 100)));
+        return (
+            <UICard className="flex flex-col items-center justify-center p-4 w-32 h-43 shadow">
+                <div className="relative flex items-center justify-center w-16 h-16 mb-2">
+                    <svg width="64" height="64">
+                        <circle
+                            cx="32"
+                            cy="32"
+                            r="28"
+                            stroke="#22C55E"
+                            strokeWidth="6"
+                            fill="#F0FDF4"
+                        />
+                        <circle
+                            cx="32"
+                            cy="32"
+                            r="28"
+                            stroke="#22C55E"
+                            strokeWidth="6"
+                            fill="none"
+                            strokeDasharray={2 * Math.PI * 28}
+                            strokeDashoffset={2 * Math.PI * 28 * (1 - percent / 100)}
+                            style={{ transition: "stroke-dashoffset 0.5s" }}
+                        />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-green-700">
+                        {percent}%
+                    </span>
+                </div>
+                <span className="text-sm font-medium text-green-900">{label}</span>
+            </UICard>
+        );
+    }
+
     return (
         <div className={classNames(
             "min-h-screen transition-all duration-500 overflow-x-hidden",
@@ -400,15 +474,10 @@ export default function BrainSignalVisualizer() {
                 <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center justify-between">
                         {/* Enhanced Logo Section */}
-                        <div className="flex items-center gap-4">
-                            <div className="relative group">
-                                <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
-                                <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-purple-600 to-cyan-500 shadow-xl">
-                                    <Brain className="h-8 w-8 text-white" />
-                                </div>
-                            </div>
+                        <div className="flex items-center gap-4 " style={{ padding: "0.5rem 1rem" }}>
+
                             <div>
-                                <h1 className="text-2xl lg:text-3xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                                <h1 className="text-2xl lg:text-3xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent ">
                                     Neural<span className="text-teal-500">Flow</span>
                                 </h1>
                                 <p className="text-sm lg:text-base text-slate-600 dark:text-slate-300 font-medium">
@@ -416,6 +485,8 @@ export default function BrainSignalVisualizer() {
                                 </p>
                             </div>
                         </div>
+
+
 
                         {/* Enhanced Controls with Better Padding */}
                         <div className="flex items-center gap-4 px-6 py-4">
@@ -433,6 +504,19 @@ export default function BrainSignalVisualizer() {
                                 <span className="text-sm font-bold hidden sm:inline px-2" style={{ padding: "0.4rem" }}>
                                     {isDeviceConnected ? "Connected" : "Disconnected"}
                                 </span>
+                            </div>
+                            {/* Toggle plotting button */}
+                            <div className="flex justify-end mb-4">
+                                <UIButton
+                                    onClick={() => setShowPlotting((v) => !v)}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-green-900 bg-green-100 hover:bg-green-200 shadow transition-all"
+                                >
+                                    {showPlotting ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    {showPlotting ? "Hide Plotting" : "Show Plotting"}
+                                </UIButton>
+                            </div>
+                            <div className="rounded-2xl bg-white border border-green-200 py-3 shadow hover:shadow-lg transition-all duration-300 flex flex-col justify-between" >
+                                <StreamingDuration startTime={connectionStartTimeRef.current ?? Date.now()} isLive={isDeviceConnected} />
                             </div>
 
                             {/* Action Button with Enhanced Padding */}
@@ -474,327 +558,202 @@ export default function BrainSignalVisualizer() {
             </header>
 
             {/* Improved Main Content */}
-            <main className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-8">
-                {/* Enhanced Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <main className="w-full mx-auto px-4 sm:px-8 lg:px-16 py-8 space-y-10">
+                {/* Stats Grid - White & Green Theme */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     {/* Device Status */}
-                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105" style={{ padding: "0.9rem" }}>
+                    <div className="rounded-2xl bg-white border border-green-200 p-6 shadow hover:shadow-lg transition-all duration-300 flex flex-col justify-between" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50">
-                                <Signal className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                            <div className="p-3 rounded-full bg-green-100">
+                                <Signal className="h-7 w-7 text-green-600" />
                             </div>
                             <div className={classNames(
                                 "px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wide",
                                 isDeviceConnected
-                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-                                    : "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-400"
+                                    ? "bg-green-200 text-green-700"
+                                    : "bg-gray-100 text-gray-500"
                             )}>
                                 {isDeviceConnected ? "ONLINE" : "OFFLINE"}
                             </div>
                         </div>
-                        <div className="space-y-2" style={{ paddingLeft: "0.9rem" }}>
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                Device Status
-                            </h3>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Neural interface connection
-                            </p>
+                        <div>
+                            <h3 className="text-xl font-bold text-green-900">Device Status</h3>
+                            <p className="text-sm text-green-700">Neural interface connection</p>
                         </div>
                     </div>
 
                     {/* Heart Rate */}
-                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105 " style={{ padding: "0.9rem" }}>
-                        <div className="flex items-center justify-between mb-4 ">
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-red-100 to-pink-200 dark:from-red-900/50 dark:to-pink-800/50">
+                    <div className="rounded-2xl bg-white border border-green-200 p-6 shadow hover:shadow-lg transition-all duration-300 flex flex-col justify-between" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 rounded-full bg-green-100">
                                 <Heart className={classNames(
                                     "h-7 w-7 transition-all duration-300",
-                                    heartbeatActive ? "text-red-500 scale-125" : "text-red-600 dark:text-red-400"
+                                    heartbeatActive ? "text-green-500 scale-125" : "text-green-600"
                                 )} />
                             </div>
                             <div className="text-right">
-                                <div className="text-3xl font-black text-slate-900 dark:text-slate-100" ref={bpmCurrentRef}>--</div>
-                                <div className="text-sm font-medium text-slate-500">BPM</div>
+                                <div className="text-3xl font-black text-green-900" ref={bpmCurrentRef}>--</div>
+                                <div className="text-sm font-medium text-green-700">BPM</div>
                             </div>
                         </div>
-                        <div className="space-y-2 " style={{ paddingLeft: "0.9rem" }}>
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                Heart Rate
-                            </h3>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mx-4">
-                                Cardiovascular monitoring
-                            </p>
+                        <div>
+                            <h3 className="text-xl font-bold text-green-900">Heart Rate</h3>
+                            <p className="text-sm text-green-700">Cardiovascular monitoring</p>
                         </div>
                     </div>
 
                     {/* HRV */}
-                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105" style={{ padding: "0.9rem" }}>
+                    <div className="rounded-2xl bg-white border border-green-200 p-6 shadow hover:shadow-lg transition-all duration-300 flex flex-col justify-between" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-100 to-violet-200 dark:from-purple-900/50 dark:to-violet-800/50">
-                                <Activity className="h-7 w-7 text-purple-600 dark:text-purple-400" />
+                            <div className="p-3 rounded-full bg-green-100">
+                                <Activity className="h-7 w-7 text-green-600" />
                             </div>
                             <div className="text-right">
-                                <div className="text-3xl font-black text-slate-900 dark:text-slate-100" ref={hrvCurrentRef}>--</div>
-                                <div className="text-sm font-medium text-slate-500">MS</div>
+                                <div className="text-3xl font-black text-green-900" ref={hrvCurrentRef}>--</div>
+                                <div className="text-sm font-medium text-green-700">MS</div>
                             </div>
                         </div>
-                        <div className="space-y-2" >
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                Heart Rate Variability
-                            </h3>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Autonomic nervous system
-                            </p>
+                        <div>
+                            <h3 className="text-xl font-bold text-green-900">Heart Rate Variability</h3>
+                            <p className="text-sm text-green-700">Autonomic nervous system</p>
                         </div>
                     </div>
 
                     {/* Mental State */}
-                    <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-6 hover:shadow-2xl transition-all duration-500 hover:scale-105" style={{ padding: "0.9rem" }}>
-                        <div className="flex items-center justify-between mb-4" >
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-900/50 dark:to-teal-800/50">
-                                <Brain className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                    <div className="rounded-2xl bg-white border border-green-200 p-6 shadow hover:shadow-lg transition-all duration-300 flex flex-col justify-between" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
+                        {/* Heart & Mind Animation Card */}
+                        <div className="flex items-center justify-center gap-8 mb-4">
+                            {/* Animated Heart */}
+                            <div className="p-3 rounded-full bg-green-100 animate-pulse">
+                                <Heart className="h-10 w-10 text-green-500" />
                             </div>
-                            <div className="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                                AI ANALYSIS
+                            {/* Animated Brain */}
+                            <div className="p-3 rounded-full bg-green-100 animate-bounce">
+                                <Brain className="h-10 w-10 text-green-600" />
                             </div>
                         </div>
-                        <div className="space-y-2" >
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                Mental State
-                            </h3>
-                            <div className="text-lg font-bold">
+                        <div className="text-center">
+                            <h3 className="text-xl font-bold text-green-900 mb-2">Heart & Mind Sync</h3>
+                            <p className="text-sm text-green-700">Visualizing heart and mind connection</p>
+
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-green-900">Mental State</h3>
+                            <div className="text-lg font-bold text-green-700">
                                 <MoodDisplay state={currentMentalState} />
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Enhanced Signal Visualization */}
-                <div className="space-y-6">
-                    <div className="text-center">
-                        <h2 className="text-3xl font-black bg-gradient-to-r from-slate-700 to-slate-900 dark:from-slate-200 dark:to-slate-400 bg-clip-text text-transparent mb-2">
-                            Live Signal Monitoring
-                        </h2>
-                        <p className="text-lg text-slate-600 dark:text-slate-400">
-                            Real-time bioelectric signal visualization
-                        </p>
+                    {/* Mental Load Index */}
+                    <div className="rounded-2xl bg-white border border-green-200 p-6 shadow hover:shadow-lg transition-all duration-300 flex flex-col justify-between" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 rounded-full bg-green-100">
+                                <GaugeIcon className="h-7 w-7 text-green-600" />
+                            </div>
+                            <div className="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wide bg-green-200 text-green-700">
+                                INDEX
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-green-900">Mental Load Index</h3>
+                            <div className="text-lg font-bold text-green-700">
+                                {mentalLoadIndex}
+                            </div>
+                            <p className="text-sm text-green-700">High beta + high HR + low HRV = stressed/fatigued</p>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-8">
+                    {/* Mind-Body Balance Score */}
+                    <div className="rounded-2xl bg-white border border-green-200 p-6 shadow hover:shadow-lg transition-all duration-300 flex flex-col justify-between" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 rounded-full bg-green-100">
+                                <BarChartIcon className="h-7 w-7 text-green-600" />
+                            </div>
+                            <div className="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wide bg-green-200 text-green-700">
+                                SCORE
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-green-900">Mind-Body Balance</h3>
+                            <div className="text-lg font-bold text-green-700">
+                                {mindBodyBalance !== null ? `${mindBodyBalance}` : "--"}
+                            </div>
+                            <p className="text-sm text-green-700">Normalized (Alpha + Theta) vs HRV (RMSSD)</p>
+                        </div>
+                    </div>
+                    {/* Brainwave Circles Section */}
+                    <div className="w-full md:col-span-2 lg:col-span-2">
+                        <div className="flex flex-wrap md:flex-nowrap gap-4 w-full justify-center items-center overflow-x-auto md:overflow-visible">
+                            {(radarCh0DataRef.current ?? []).map(({ subject, value }) => (
+                                <BrainwaveCircle key={subject} label={subject} value={value} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+
+                {/* Signal Visualization - White & Green */}
+                {showPlotting && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
                         {/* EEG Channel 1 */}
-                        <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
+                        <div className="rounded-2xl bg-white border border-green-200 p-8 shadow hover:shadow-lg transition-all duration-300">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-4 h-4 rounded-full bg-amber-500 shadow-lg animate-pulse"></div>
-                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">EEG Channel 1</h3>
+                                    <div className="w-4 h-4 rounded-full bg-green-500 shadow-lg"></div>
+                                    <h3 className="text-2xl font-bold text-green-900">EEG Channel 1</h3>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="px-4 py-2 rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 text-sm font-bold">
-                                        FRONTAL CORTEX
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
-                                            <Maximize2 className="h-4 w-4" />
-                                        </UIButton>
-                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
-                                            <Settings className="h-4 w-4" />
-                                        </UIButton>
-                                    </div>
-                                </div>
+
                             </div>
-                            <div className="relative h-48 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border-2 border-amber-200 dark:border-amber-800/50 overflow-hidden shadow-inner">
+                            <div className="relative h-48 rounded-2xl  overflow-hidden shadow-inner">
                                 <WebglPlotCanvas
                                     ref={eeg1CanvasRef}
                                     channels={[1]}
-                                    colors={{ 1: "#F59E0B" }}
+                                    colors={{ 1: "#22C55E" }}
                                     gridnumber={10}
                                 />
                             </div>
                         </div>
 
                         {/* EEG Channel 2 */}
-                        <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
+                        <div className="rounded-2xl bg-white border border-green-200 p-8 shadow hover:shadow-lg transition-all duration-300">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-4 h-4 rounded-full bg-cyan-500 shadow-lg animate-pulse"></div>
-                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">EEG Channel 2</h3>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="px-4 py-2 rounded-xl bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300 text-sm font-bold">
-                                        PARIETAL CORTEX
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
-                                            <Maximize2 className="h-4 w-4" />
-                                        </UIButton>
-                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
-                                            <Settings className="h-4 w-4" />
-                                        </UIButton>
-                                    </div>
+                                    <div className="w-4 h-4 rounded-full bg-green-500 shadow-lg"></div>
+                                    <h3 className="text-2xl font-bold text-green-900">EEG Channel 2</h3>
                                 </div>
                             </div>
-                            <div className="relative h-48 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border-2 border-cyan-200 dark:border-cyan-800/50 overflow-hidden shadow-inner">
+                            <div className="relative h-48 rounded-2xl border-2 border-green-200 overflow-hidden shadow-inner">
                                 <WebglPlotCanvas
                                     ref={eeg2CanvasRef}
                                     channels={[2]}
-                                    colors={{ 2: "#06B6D4" }}
+                                    colors={{ 2: "#22C55E" }}
                                     gridnumber={10}
                                 />
                             </div>
                         </div>
 
                         {/* ECG Signal */}
-                        <div className="group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
+                        <div className="rounded-2xl bg-white border border-green-200 p-8 shadow hover:shadow-lg transition-all duration-300">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-4 h-4 rounded-full bg-rose-500 shadow-lg animate-pulse"></div>
-                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">ECG Signal</h3>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="px-4 py-2 rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 text-sm font-bold">
-                                        CARDIAC RHYTHM
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
-                                            <Maximize2 className="h-4 w-4" />
-                                        </UIButton>
-                                        <UIButton variant="ghost" size="sm" className="h-10 w-10 rounded-xl">
-                                            <Settings className="h-4 w-4" />
-                                        </UIButton>
-                                    </div>
+                                    <div className="w-4 h-4 rounded-full bg-green-500 shadow-lg"></div>
+                                    <h3 className="text-2xl font-bold text-green-900">ECG Signal</h3>
                                 </div>
                             </div>
-                            <div className="relative h-48 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border-2 border-rose-200 dark:border-rose-800/50 overflow-hidden shadow-inner">
+                            <div className="relative h-48 rounded-2xl  border-2 border-green-200 overflow-hidden shadow-inner">
                                 <WebglPlotCanvas
                                     ref={ecgCanvasRef}
                                     channels={[3]}
-                                    colors={{ 3: "#F43F5E" }}
+                                    colors={{ 3: "#22C55E" }}
                                     gridnumber={10}
                                 />
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
 
-                {/* Enhanced Brain Wave Analysis & Training */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Brain Wave Analysis */}
-                    <div className="lg:col-span-2 group relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 p-8 hover:shadow-2xl transition-all duration-500">
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-100 to-purple-200 dark:from-violet-900/50 dark:to-purple-800/50">
-                                    <Waves className="h-7 w-7 text-violet-600 dark:text-violet-400" />
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Brain Wave Analysis</h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">Real-time frequency distribution</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Left Hemisphere */}
-                            <div className="space-y-6">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-4 h-4 rounded-full bg-blue-500 shadow-lg"></div>
-                                    <h4 className="text-lg font-bold text-slate-900 dark:text-slate-100">Left Hemisphere</h4>
-                                </div>
-                                <div className="space-y-4">
-                                    {["Delta", "Theta", "Alpha", "Beta", "Gamma"].map((band, index) => {
-                                        const value = radarCh0DataRef.current.find((d) => d.subject === band)?.value ?? 0;
-                                        const colors = [
-                                            "from-indigo-500 to-purple-600",
-                                            "from-blue-500 to-indigo-600",
-                                            "from-green-500 to-blue-600",
-                                            "from-yellow-500 to-orange-600",
-                                            "from-red-500 to-pink-600"
-                                        ];
-                                        const frequencies = ["0.5-4 Hz", "4-8 Hz", "8-13 Hz", "13-30 Hz", "30-100 Hz"];
-                                        return (
-                                            <div key={band} className="space-y-3">
-                                                <div className="flex justify-between items-center">
-                                                    <div>
-                                                        <span className="font-bold text-slate-900 dark:text-slate-100">{band}</span>
-                                                        <span className="text-xs text-slate-500 ml-2">{frequencies[index]}</span>
-                                                    </div>
-                                                    <span className="text-lg font-black text-slate-900 dark:text-slate-100">{value.toFixed(1)}%</span>
-                                                </div>
-                                                <div className="relative h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner">
-                                                    <div
-                                                        className={`h-full bg-gradient-to-r ${colors[index]} transition-all duration-1000 ease-out shadow-lg`}
-                                                        style={{ width: `${Math.min(value, 100)}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Right Hemisphere */}
-                            <div className="space-y-6">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-4 h-4 rounded-full bg-green-500 shadow-lg"></div>
-                                    <h4 className="text-lg font-bold text-slate-900 dark:text-slate-100">Right Hemisphere</h4>
-                                </div>
-                                <div className="space-y-4">
-                                    {["Delta", "Theta", "Alpha", "Beta", "Gamma"].map((band, index) => {
-                                        const value = radarCh1DataRef.current.find((d) => d.subject === band)?.value ?? 0;
-                                        const colors = [
-                                            "from-indigo-500 to-purple-600",
-                                            "from-blue-500 to-indigo-600",
-                                            "from-green-500 to-blue-600",
-                                            "from-yellow-500 to-orange-600",
-                                            "from-red-500 to-pink-600"
-                                        ];
-                                        const frequencies = ["0.5-4 Hz", "4-8 Hz", "8-13 Hz", "13-30 Hz", "30-100 Hz"];
-                                        return (
-                                            <div key={band} className="space-y-3">
-                                                <div className="flex justify-between items-center">
-                                                    <div>
-                                                        <span className="font-bold text-slate-900 dark:text-slate-100">{band}</span>
-                                                        <span className="text-xs text-slate-500 ml-2">{frequencies[index]}</span>
-                                                    </div>
-                                                    <span className="text-lg font-black text-slate-900 dark:text-slate-100">{value.toFixed(1)}%</span>
-                                                </div>
-                                                <div className="relative h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner">
-                                                    <div
-                                                        className={`h-full bg-gradient-to-r ${colors[index]} transition-all duration-1000 ease-out shadow-lg`}
-                                                        style={{ width: `${Math.min(value, 100)}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Enhanced Action Buttons */}
-                <div className="flex flex-wrap justify-center gap-4 pt-18">
-                    <UIButton
-                        variant="outline"
-                        className="gap-3 px-8 py-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-700 hover:bg-white/70 dark:hover:bg-slate-800/70 font-bold text-lg shadow-lg transition-all duration-300 hover:scale-105"
-                    >
-                        <Download className="h-5 w-5" />
-                        Export Data
-                    </UIButton>
-                    <UIButton
-                        variant="outline"
-                        className="gap-3 px-8 py-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-700 hover:bg-white/70 dark:hover:bg-slate-800/70 font-bold text-lg shadow-lg transition-all duration-300 hover:scale-105"
-                    >
-                        <Share2 className="h-5 w-5" />
-                        Share Session
-                    </UIButton>
-                    <UIButton
-                        variant="outline"
-                        className="gap-3 px-8 py-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-700 hover:bg-white/70 dark:hover:bg-slate-800/70 font-bold text-lg shadow-lg transition-all duration-300 hover:scale-105"
-                    >
-                        <RotateCcw className="h-5 w-5" />
-                        Reset Session
-                    </UIButton>
-                </div>
             </main>
         </div>
     );
