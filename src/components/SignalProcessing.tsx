@@ -460,16 +460,7 @@ export default function BrainSignalVisualizer() {
             "min-h-screen flex",
             isDarkMode ? "bg-gray-900" : "bg-slate-100"
         )}>
-            {/* Mobile Hamburger */}
-            <button
-                className="fixed top-4 left-4 z-40 md:hidden bg-white dark:bg-slate-800 p-2 rounded-lg shadow"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Open sidebar"
-            >
-                <svg className="h-6 w-6 text-slate-700 dark:text-slate-200" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
+          
 
             {/* Sidebar Navigation - Desktop */}
             <div className={classNames(
@@ -604,7 +595,7 @@ export default function BrainSignalVisualizer() {
             )}>
                 {/* Overlay */}
                 <div
-                    className="absolute inset-0 bg-black bg-opacity-40"
+                    className="absolute inset-0  bg-opacity-40 backdrop-blur-sm"
                     onClick={() => setSidebarOpen(false)}
                 />
                 {/* Drawer */}
@@ -705,35 +696,76 @@ export default function BrainSignalVisualizer() {
                         </div>
                     </div>
 
-                   
+                    {/* Meditation Section */}
+                    <div className="mt-8">
+                        <MeditationSession
+                            onStartSession={() => { isSessionActiveRef.current = true; isMeditatingRef.current = true; }}
+                            onEndSession={() => { isSessionActiveRef.current = false; isMeditatingRef.current = false; }}
+                            sessionData={sessionDataRef.current}
+                            sessionResults={sessionSummary}
+                            setSessionResults={setSessionSummary}
+                            connected={isDeviceConnected}
+                            setShowResults={setResultsVisible}
+                            darkMode={isDarkMode}
+                        />
+                        {sessionSummary && sessionSummary.statePercentages && (
+                            <div className="mt-4 p-3 rounded-lg border bg-green-50 dark:bg-green-900 border-green-200 dark:border-green-700">
+                                <div className="font-semibold text-green-700 dark:text-green-300 mb-2">Session Results</div>
+                                <div className="space-y-1 text-sm">
+                                    <div>
+                                        <span className="font-medium">Relaxed:</span> <span className="text-green-700 dark:text-green-300">{sessionSummary.statePercentages.Relaxed}%</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Focused:</span> <span className="text-green-700 dark:text-green-300">{sessionSummary.statePercentages.Focused}%</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Meditative:</span> <span className="text-green-700 dark:text-green-300">{sessionSummary.statePercentages["Meditation"]}%</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Drowsy:</span> <span className="text-green-700 dark:text-green-300">{sessionSummary.statePercentages.Drowsy}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Main Content Area */}
             <div className="flex-1 overflow-auto">
                 {/* Top Header Bar */}
-                <div className={classNames(
-                    "border-b px-8 py-4",
-                    isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
-                )}>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                                Live Monitoring Dashboard
-                            </h2>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Real-time neural and cardiac data visualization
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="text-right">
-                                <div className="text-sm text-slate-500 dark:text-slate-400">Session Time</div>
-                                <div className="text-lg font-mono font-bold text-slate-700 dark:text-slate-300">
-                                    <StreamingDuration 
-                                        startTime={connectionStartTimeRef.current ?? Date.now()} 
-                                        isLive={isDeviceConnected} 
-                                    />
-                                </div>
+                <div
+                    className={classNames(
+                        "border-b px-8 py-4 flex items-center justify-between",
+                        isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
+                    )}
+                >
+                    {/* Hamburger for mobile */}
+                    <button
+                        className="md:hidden bg-white dark:bg-slate-800 p-2 rounded-lg shadow mr-4"
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open sidebar"
+                    >
+                        <svg className="h-6 w-6 text-slate-700 dark:text-slate-200" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                            Live Monitoring Dashboard
+                        </h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Real-time neural and cardiac data visualization
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                            <div className="text-sm text-slate-500 dark:text-slate-400">Session Time</div>
+                            <div className="text-lg font-mono font-bold text-slate-700 dark:text-slate-300">
+                                <StreamingDuration 
+                                    startTime={connectionStartTimeRef.current ?? Date.now()} 
+                                    isLive={isDeviceConnected} 
+                                />
                             </div>
                         </div>
                     </div>
