@@ -23,6 +23,7 @@ import { predictState as predictMentalState } from "@/lib/stateClassifier";
 import { useRouter as useLocalRouter } from 'next/navigation';
 import { Eye, EyeOff } from "lucide-react";
 import StreamingDuration from "./StreamingDuration";
+import { MeditationSession } from "@/components/MeditationSession";
 
 export default function BrainSignalVisualizer() {
     const [isDarkMode, setIsDarkMode] = useLocalState(false);
@@ -507,12 +508,7 @@ export default function BrainSignalVisualizer() {
                         )}>
                             {isDeviceConnected ? "Connected" : "Disconnected"}
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            <StreamingDuration 
-                                startTime={connectionStartTimeRef.current ?? Date.now()} 
-                                isLive={isDeviceConnected} 
-                            />
-                        </div>
+                       
                     </div>
 
                     {/* Quick Actions */}
@@ -539,21 +535,7 @@ export default function BrainSignalVisualizer() {
                             )}
                         </UIButton>
 
-                        <UIButton
-                            onClick={() => setShowPlotting((v) => !v)}
-                            className="w-full justify-start px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 hover:bg-slate-200 dark:hover:bg-slate-500 rounded-lg"
-                        >
-                            {showPlotting ? <EyeOff className="h-4 w-4 mr-3" /> : <Eye className="h-4 w-4 mr-3" />}
-                            {showPlotting ? "Hide Signals" : "Show Signals"}
-                        </UIButton>
-
-                        <UIButton
-                            onClick={() => setIsDarkMode(!isDarkMode)}
-                            className="w-full justify-start px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 hover:bg-slate-200 dark:hover:bg-slate-500 rounded-lg"
-                        >
-                            {isDarkMode ? <Sun className="h-4 w-4 mr-3" /> : <Moon className="h-4 w-4 mr-3" />}
-                            {isDarkMode ? "Light Mode" : "Dark Mode"}
-                        </UIButton>
+                       
                     </div>
 
                     {/* Mental State Display */}
@@ -573,6 +555,44 @@ export default function BrainSignalVisualizer() {
                                 <MoodDisplay state={currentMentalState} />
                             </div>
                         </div>
+                    </div>
+
+                    {/* Meditation Session Option in Sidebar */}
+                    <div className="mt-8">
+                        <div className="mb-2 flex items-center gap-2">
+                           
+                            <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Meditation</span>
+                        </div>
+                        <MeditationSession
+                            onStartSession={() => { isSessionActiveRef.current = true; isMeditatingRef.current = true; }}
+                            onEndSession={() => { isSessionActiveRef.current = false; isMeditatingRef.current = false; }}
+                            sessionData={sessionDataRef.current}
+                            sessionResults={sessionSummary}
+                            setSessionResults={setSessionSummary}
+                            connected={isDeviceConnected}
+                            setShowResults={setResultsVisible}
+                            darkMode={isDarkMode}
+                        />
+                        {/* Show results after session */}
+                        {sessionSummary && sessionSummary.statePercentages && (
+                            <div className="mt-4 p-3 rounded-lg border bg-indigo-50 dark:bg-indigo-900 border-indigo-200 dark:border-indigo-700">
+                                <div className="font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Session Results</div>
+                                <div className="space-y-1 text-sm">
+                                    <div>
+                                        <span className="font-medium">Relaxed:</span> {sessionSummary.statePercentages.Relaxed}%
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Focused:</span> {sessionSummary.statePercentages.Focused}%
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Meditative:</span> {sessionSummary.statePercentages["Meditation"]}%
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Drowsy:</span> {sessionSummary.statePercentages.Drowsy}%
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -664,22 +684,6 @@ export default function BrainSignalVisualizer() {
                                 </>
                             )}
                         </UIButton>
-
-                        <UIButton
-                            onClick={() => setShowPlotting((v) => !v)}
-                            className="w-full justify-start px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 hover:bg-slate-200 dark:hover:bg-slate-500 rounded-lg"
-                        >
-                            {showPlotting ? <EyeOff className="h-4 w-4 mr-3" /> : <Eye className="h-4 w-4 mr-3" />}
-                            {showPlotting ? "Hide Signals" : "Show Signals"}
-                        </UIButton>
-
-                        <UIButton
-                            onClick={() => setIsDarkMode(!isDarkMode)}
-                            className="w-full justify-start px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 hover:bg-slate-200 dark:hover:bg-slate-500 rounded-lg"
-                        >
-                            {isDarkMode ? <Sun className="h-4 w-4 mr-3" /> : <Moon className="h-4 w-4 mr-3" />}
-                            {isDarkMode ? "Light Mode" : "Dark Mode"}
-                        </UIButton>
                     </div>
 
                     {/* Mental State Display */}
@@ -699,6 +703,44 @@ export default function BrainSignalVisualizer() {
                                 <MoodDisplay state={currentMentalState} />
                             </div>
                         </div>
+                    </div>
+
+                    {/* Meditation Session Option in Sidebar */}
+                    <div className="mt-8">
+                        <div className="mb-2 flex items-center gap-2">
+                            <BrainIcon className="h-4 w-4 text-indigo-500" />
+                            <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Meditation</span>
+                        </div>
+                        <MeditationSession
+                            onStartSession={() => { isSessionActiveRef.current = true; isMeditatingRef.current = true; }}
+                            onEndSession={() => { isSessionActiveRef.current = false; isMeditatingRef.current = false; }}
+                            sessionData={sessionDataRef.current}
+                            sessionResults={sessionSummary}
+                            setSessionResults={setSessionSummary}
+                            connected={isDeviceConnected}
+                            setShowResults={setResultsVisible}
+                            darkMode={isDarkMode}
+                        />
+                        {/* Show results after session */}
+                        {sessionSummary && sessionSummary.statePercentages && (
+                            <div className="mt-4 p-3 rounded-lg border bg-indigo-50 dark:bg-indigo-900 border-indigo-200 dark:border-indigo-700">
+                                <div className="font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Session Results</div>
+                                <div className="space-y-1 text-sm">
+                                    <div>
+                                        <span className="font-medium">Relaxed:</span> {sessionSummary.statePercentages.Relaxed}%
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Focused:</span> {sessionSummary.statePercentages.Focused}%
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Meditative:</span> {sessionSummary.statePercentages["Meditation"]}%
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Drowsy:</span> {sessionSummary.statePercentages.Drowsy}%
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

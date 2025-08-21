@@ -264,13 +264,9 @@ export const MeditationSession = ({
                     <div className="flex-1 flex flex-col p-6 space-y-8">
                         {/* Header */}
                         <div className="text-center space-y-4">
-                            <div className="flex justify-center">
-                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                                    <Brain className="h-8 w-8 text-white" />
-                                </div>
-                            </div>
+                            
                             <div>
-                                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                <h2 className="text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                                     Ready to Meditate?
                                 </h2>
                                 <p className="text-muted-foreground mt-2">
@@ -344,11 +340,7 @@ export const MeditationSession = ({
                     <div className="flex-1 flex flex-col p-6 space-y-6">
                         {/* Results Header */}
                         <div className="text-center space-y-4">
-                            <div className="flex justify-center">
-                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                                    <CheckCircle className="h-8 w-8 text-white" />
-                                </div>
-                            </div>
+                           
                             <div>
                                 <h2 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                                     Session Complete
@@ -403,14 +395,7 @@ export const MeditationSession = ({
 
                         {/* Action Buttons */}
                         <div className="flex gap-3 pt-4">
-                            <Button
-                                onClick={() => setShowResults(true)}
-                                size="lg"
-                                className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
-                            >
-                                <Activity className="mr-2 h-5 w-5" />
-                                View Full Results
-                            </Button>
+                            
                             <Button
                                 onClick={() => {
                                     setSessionResults(null);
