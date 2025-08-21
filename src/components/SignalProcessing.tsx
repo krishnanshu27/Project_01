@@ -1,27 +1,18 @@
 "use client";
 import { useState as useLocalState, useRef as useLocalRef, useCallback as useLocalCallback, useEffect as useLocalEffect } from "react";
 import { useMotionValue as useLocalMotionValue } from "framer-motion";
-
 import { Button as UIButton } from "@/components/ui/button";
 import { cn as classNames } from "@/lib/utils";
-
 import {
-    Activity as ActivityIcon, Brain as BrainIcon, Heart as HeartIcon, Moon as MoonIcon, Sun as SunIcon, Plug as PlugIcon, PlugZap as PlugZapIcon, Zap as ZapIcon, Clock as ClockIcon, Target as TargetIcon,
-    Signal as SignalIcon, TrendingUp as TrendingUpIcon, ActivitySquare as ActivitySquareIcon, Gauge as GaugeIcon, BarChart3 as BarChartIcon, BarChart3, Waves, Brain, Heart, Activity, Clock, Target, Zap, RotateCcw, Wifi, WifiOff, Maximize2, Settings, Download, Share2, Sun, Moon, Signal
+    Activity as ActivityIcon, Brain as BrainIcon, Heart as HeartIcon, Moon as MoonIcon, Sun as SunIcon, Plug as PlugIcon, PlugZap as PlugZapIcon, Clock as ClockIcon, Target as TargetIcon,
+    Gauge as GaugeIcon, BarChart3 as BarChartIcon, Waves, Brain, Heart, Activity, Clock, Target, Plug, PlugZap
 } from 'lucide-react';
-import { Card as UICard, CardContent as UICardContent, CardDescription as UICardDescription, CardHeader as UICardHeader, CardTitle as UICardTitle } from '@/components/ui/card';
-
-import { Tabs as UITabs, TabsContent as UITabsContent, TabsList as UITabsList, TabsTrigger as UITabsTrigger } from '@/components/ui/tabs';
-
+import { Card as UICard } from '@/components/ui/card';
 import { useBluetoothDataStream as useBluetoothStream } from './Bledata';
 import WebglPlotCanvas from './WebglPlotCanvas';
-
 import { WebglPlotCanvasHandle as PlotCanvasHandle } from "./WebglPlotCanvas";
-import HeartRateVariabilityCanvas, { HeartRateVariabilityHandle as HRVCanvasHandle } from '@/components/Hrvwebglplot'
 import { MoodDisplay, EmotionalState } from "./StateIndicator";
 import { predictState as predictMentalState } from "@/lib/stateClassifier";
-import { useRouter as useLocalRouter } from 'next/navigation';
-import { Eye, EyeOff } from "lucide-react";
 import StreamingDuration from "./StreamingDuration";
 import { MeditationSession } from "@/components/MeditationSession";
 
@@ -65,40 +56,19 @@ export default function BrainSignalVisualizer() {
         weightedEEGScore: number;
     } | null>(null);
     const bpmCurrentRef = useLocalRef<HTMLDivElement>(null);
-    const bpmHighRef = useLocalRef<HTMLDivElement>(null);
-    const bpmLowRef = useLocalRef<HTMLDivElement>(null);
-    const bpmAvgRef = useLocalRef<HTMLDivElement>(null);
-    const bpmWorkerRef = useLocalRef<Worker | null>(null);
-    const prevSampleCounterRef = useLocalRef<number | null>(null);
     const hrvCurrentRef = useLocalRef<HTMLDivElement>(null);
-    const hrvHighRef = useLocalRef<HTMLDivElement>(null);
-    const hrvLowRef = useLocalRef<HTMLDivElement>(null);
-    const hrvAvgRef = useLocalRef<HTMLDivElement>(null);
-    const [hrvHistory, setHrvHistory] = useLocalState<{ time: number; hrv: number }[]>([]);
-    const hrvCanvasRef = useLocalRef<HRVCanvasHandle>(null);
-    const router = useLocalRouter();
-    const leftBetaMV = useLocalMotionValue(0);
-    const rightBetaMV = useLocalMotionValue(0);
-    const ecgBufferRef = useLocalRef<number[]>([]);
-    const [dashboardMode, setDashboardMode] = useLocalState<"radar" | "meditation">("radar");
-    const [goalSelected, setGoalSelected] = useLocalState<"anxiety" | "meditation" | "sleep">("anxiety");
-    const [resultsVisible, setResultsVisible] = useLocalState(false);
-    const goalSelectedRef = useLocalRef(goalSelected);
-    const [relaxScore, setRelaxScore] = useLocalState<number | null>(null);
-    const sessionDataRef = useLocalRef<{ timestamp: number; alpha: number; beta: number; theta: number; delta: number, symmetry: number }[]>([]);
-    const isSessionActiveRef = useLocalRef(false);
-    const isMeditatingRef = useLocalRef(false);
-    const SAMPLES_PER_SECOND = 500;
-    const FFT_WINDOW_SIZE = 256;
-    const sampleIndexRef = useLocalRef(0);
     const [mentalLoadIndex, setMentalLoadIndex] = useLocalState<"Stressed/Fatigued" | "Normal">("Normal");
     const [mindBodyBalance, setMindBodyBalance] = useLocalState<number | null>(null);
     const [showPlotting, setShowPlotting] = useLocalState(true);
     const [sidebarOpen, setSidebarOpen] = useLocalState(false);
+    const [dashboardMode, setDashboardMode] = useLocalState<"radar" | "meditation" | "anxiety" | "sleep">("radar");
+    const sessionDataRef = useLocalRef<{ timestamp: number; alpha: number; beta: number; theta: number; delta: number, symmetry: number }[]>([]);
+    const isSessionActiveRef = useLocalRef(false);
+    const isMeditatingRef = useLocalRef(false);
 
-    useLocalEffect(() => {
-        goalSelectedRef.current = goalSelected;
-    }, [goalSelected]);
+    const SAMPLES_PER_SECOND = 500;
+    const FFT_WINDOW_SIZE = 256;
+    const sampleIndexRef = useLocalRef(0);
 
     useLocalEffect(() => {
         const interval = setInterval(() => {
@@ -121,20 +91,6 @@ export default function BrainSignalVisualizer() {
     }, []);
 
     const { connected: isDeviceConnected, connect: connectDevice, disconnect: disconnectDevice } = useBluetoothStream(handleDataStream);
-
-    const channelPalette: Record<string, string> = {
-        ch0: "#C29963",
-        ch1: "#548687",
-        ch2: "#9A7197",
-    };
-
-    const brainBands = [
-        { subject: "Delta", value: 0 },
-        { subject: "Theta", value: 0 },
-        { subject: "Alpha", value: 0 },
-        { subject: "Beta", value: 0 },
-        { subject: "Gamma", value: 0 },
-    ];
 
     useLocalEffect(() => {
         const worker = new Worker(
@@ -167,29 +123,19 @@ export default function BrainSignalVisualizer() {
             }>
         ) => {
             const { smooth0, smooth1 } = e.data;
-            leftBetaMV.set(smooth0.beta);
-            rightBetaMV.set(smooth1.beta);
-
-            function capitalize(subject: string): string {
-                return subject.charAt(0).toUpperCase() + subject.slice(1);
-            }
-
             radarCh0DataRef.current = Object.entries(smooth0).map(
-                ([subject, value]) => ({ subject: capitalize(subject), value })
+                ([subject, value]) => ({ subject: subject.charAt(0).toUpperCase() + subject.slice(1), value })
             );
-
             radarCh1DataRef.current = Object.entries(smooth1).map(
-                ([subject, value]) => ({ subject: capitalize(subject), value })
+                ([subject, value]) => ({ subject: subject.charAt(0).toUpperCase() + subject.slice(1), value })
             );
 
             let score = 0;
-            const goal = goalSelectedRef.current;
-
-            if (goal === "anxiety") {
+            if (dashboardMode === "anxiety") {
                 score = (Number(smooth0.alpha) + Number(smooth1.alpha)) / (Number(smooth0.beta) + Number(smooth1.beta) + 0.001);
-            } else if (goal === "meditation") {
+            } else if (dashboardMode === "meditation") {
                 score = (smooth0.theta + smooth1.theta) / 2;
-            } else if (goal === "sleep") {
+            } else if (dashboardMode === "sleep") {
                 score = (smooth0.delta + smooth1.delta) / 2;
             }
 
@@ -205,8 +151,6 @@ export default function BrainSignalVisualizer() {
             if (isSessionActiveRef.current) {
                 sessionDataRef.current.push(currentData);
             }
-
-            setRelaxScore(score);
         };
 
         bandWorkerRef.current = w;
@@ -235,157 +179,6 @@ export default function BrainSignalVisualizer() {
         }
     }, []);
 
-    const handleNewECG = useLocalCallback((ecg: number) => {
-        ecgBufferRef.current.push(ecg);
-        if (ecgBufferRef.current.length > 2500) {
-            ecgBufferRef.current.shift();
-        }
-        if (ecgBufferRef.current.length % 500 === 0) {
-            bpmWorkerRef.current?.postMessage({
-                ecgBuffer: [...ecgBufferRef.current],
-                sampleRate: 500,
-            });
-        }
-    }, []);
-
-    useLocalEffect(() => {
-        const worker = new Worker(
-            new URL("../webworker/bpm.worker.ts", import.meta.url),
-            { type: "module" }
-        );
-
-        const bpmWindow: number[] = [];
-        const windowSize = 5;
-        let displayedBPM: number | null = null;
-        const maxChange = 2;
-
-        worker.onmessage = (
-            e: MessageEvent<{
-                bpm: number | null;
-                high: number | null;
-                low: number | null;
-                avg: number | null;
-                peaks: number[];
-                hrv: number | null;
-                hrvHigh: number | null;
-                hrvLow: number | null;
-                hrvAvg: number | null;
-                sdnn: number;
-                rmssd: number;
-                pnn50: number;
-            }>
-        ) => {
-            const { bpm, high, low, avg, hrv, hrvHigh, hrvLow, hrvAvg, sdnn, rmssd, pnn50 } = e.data;
-
-            if (hrv !== null && !isNaN(hrv)) {
-                hrvCanvasRef.current?.addHRVData(hrv);
-            }
-
-            if (bpm !== null) {
-                bpmWindow.push(bpm);
-                if (bpmWindow.length > windowSize) bpmWindow.shift();
-                const avgBPM = bpmWindow.reduce((a, b) => a + b, 0) / bpmWindow.length;
-                if (displayedBPM === null) displayedBPM = avgBPM;
-                else {
-                    const diff = avgBPM - displayedBPM;
-                    displayedBPM += Math.sign(diff) * Math.min(Math.abs(diff), maxChange);
-                }
-                if (bpmCurrentRef.current) bpmCurrentRef.current.textContent = `${Math.round(displayedBPM)}`;
-            } else {
-                bpmWindow.length = 0;
-                displayedBPM = null;
-                if (bpmCurrentRef.current) bpmCurrentRef.current.textContent = "--";
-            }
-
-            if (bpmHighRef.current) bpmHighRef.current.textContent = high !== null ? `${high}` : "--";
-            if (bpmLowRef.current) bpmLowRef.current.textContent = low !== null ? `${low}` : "--";
-            if (bpmAvgRef.current) bpmAvgRef.current.textContent = avg !== null ? `${avg}` : "--";
-
-            if (hrvCurrentRef.current) hrvCurrentRef.current.textContent = hrv !== null ? `${hrv}` : "--";
-            if (hrvHighRef.current) hrvHighRef.current.textContent = hrvHigh !== null ? `${hrvHigh}` : "--";
-            if (hrvLowRef.current) hrvLowRef.current.textContent = hrvLow !== null ? `${hrvLow}` : "--";
-            if (hrvAvgRef.current) hrvAvgRef.current.textContent = hrvAvg !== null ? `${hrvAvg}` : "--";
-
-            const detectedState = predictMentalState({ sdnn, rmssd, pnn50 });
-            const now = Date.now();
-
-            if (connectionStartTimeRef.current === null) {
-                connectionStartTimeRef.current = now;
-                lastMentalStateUpdateRef.current = now;
-            }
-
-            stateHistoryRef.current.push({
-                state: detectedState,
-                timestamp: now
-            });
-
-            const STATE_UPDATE_INTERVAL = 5000;
-            const fiveSecondsAgo = now - STATE_UPDATE_INTERVAL;
-            stateHistoryRef.current = stateHistoryRef.current.filter(
-                item => item.timestamp >= fiveSecondsAgo
-            );
-
-            const timeSinceLastUpdate = now - lastMentalStateUpdateRef.current;
-            const timeSinceConnection = now - connectionStartTimeRef.current;
-
-            if (timeSinceConnection < STATE_UPDATE_INTERVAL) {
-                setCurrentMentalState("no_data");
-            } else if (timeSinceLastUpdate >= STATE_UPDATE_INTERVAL) {
-                if (stateHistoryRef.current.length > 0) {
-                    const stateCounts: Record<string, number> = {};
-                    stateHistoryRef.current.forEach(item => {
-                        stateCounts[item.state] = (stateCounts[item.state] || 0) + 1;
-                    });
-
-                    const dominantState = Object.entries(stateCounts).reduce((a, b) =>
-                        a[1] > b[1] ? a : b
-                    )[0] as EmotionalState;
-
-                    setCurrentMentalState(dominantState);
-                    lastMentalStateUpdateRef.current = now;
-                }
-            }
-
-            // Get latest beta value (from radarCh0DataRef or radarCh1DataRef)
-            const beta =
-                (radarCh0DataRef.current.find(d => d.subject === "Beta")?.value ?? 0) +
-                (radarCh1DataRef.current.find(d => d.subject === "Beta")?.value ?? 0);
-
-            // Simple thresholds (adjust as needed)
-            const isHighBeta = beta > 0.6;
-            const isHighHR = (bpm ?? 0) > 90;
-            const isLowHRV = (hrv ?? 100) < 40;
-
-            if (isHighBeta && isHighHR && isLowHRV) {
-                setMentalLoadIndex("Stressed/Fatigued");
-            } else {
-                setMentalLoadIndex("Normal");
-            }
-
-            // Get latest alpha and theta values (from radarCh0DataRef and radarCh1DataRef)
-            const alpha =
-                (radarCh0DataRef.current.find(d => d.subject === "Alpha")?.value ?? 0) +
-                (radarCh1DataRef.current.find(d => d.subject === "Alpha")?.value ?? 0);
-            const theta =
-                (radarCh0DataRef.current.find(d => d.subject === "Theta")?.value ?? 0) +
-                (radarCh1DataRef.current.find(d => d.subject === "Theta")?.value ?? 0);
-
-            // Normalize EEG and HRV values (adjust denominator as needed for your data range)
-            const normEEG = (alpha + theta) / 2; // assuming values are 0-1
-            const normHRV = rmssd / 100; // or sdnn / 100, adjust scaling as needed
-
-            // Combine for Mind-Body Balance Score (simple average, adjust formula as needed)
-            const balanceScore = Math.round(((normEEG + normHRV) / 2) * 100); // 0-100 scale
-
-            setMindBodyBalance(balanceScore);
-        };
-
-        bpmWorkerRef.current = worker;
-        return () => {
-            worker.terminate();
-        };
-    }, []);
-
     useLocalEffect(() => {
         isSessionActiveRef.current = dashboardMode === "meditation";
     }, [dashboardMode]);
@@ -404,23 +197,7 @@ export default function BrainSignalVisualizer() {
         }
     }, [isDeviceConnected]);
 
-    useLocalEffect(() => {
-        const dp = dataWorkerRef.current!;
-        const handler = (e: MessageEvent) => {
-            if (e.data.type === "processedData") {
-                const { eeg0, eeg1, ecg } = e.data.data;
-                handleNewSample(eeg0, eeg1);
-                handleNewECG(ecg);
-            }
-        };
-        dp.addEventListener("message", handler);
-        return () => {
-            dp.removeEventListener("message", handler);
-        };
-    }, [handleNewSample, handleNewECG]);
-
     function BrainwaveCircle({ label, value }: { label: string; value: number }) {
-        // Clamp value to 0-100 for percent
         const percent = Math.round(Math.max(0, Math.min(100, value * 100)));
         return (
             <UICard className="flex flex-col items-center justify-center p-2 w-24 h-24 shadow">
@@ -460,15 +237,12 @@ export default function BrainSignalVisualizer() {
             "min-h-screen flex",
             isDarkMode ? "bg-gray-900" : "bg-slate-100"
         )}>
-          
-
             {/* Sidebar Navigation - Desktop */}
             <div className={classNames(
                 "w-64 flex-shrink-0 border-r hidden md:block",
                 isDarkMode ? "bg-green-900 border-green-800" : "bg-white border-green-200"
             )}>
                 <div className="p-6 flex flex-col gap-6">
-
                     {/* Logo */}
                     <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-lg flex items-center justify-center">
@@ -479,9 +253,7 @@ export default function BrainSignalVisualizer() {
                             <p className="text-xs text-green-400 dark:text-green-300">v2.1.0</p>
                         </div>
                     </div>
-
                     <hr className={isDarkMode ? "border-green-800" : "border-green-200"} />
-
                     {/* Connection Status */}
                     <div className={classNames(
                         "p-4 rounded-lg border",
@@ -503,7 +275,6 @@ export default function BrainSignalVisualizer() {
                             {isDeviceConnected ? "Connected" : "Disconnected"}
                         </div>
                     </div>
-
                     {/* Quick Actions */}
                     <div>
                         <UIButton
@@ -528,9 +299,7 @@ export default function BrainSignalVisualizer() {
                             )}
                         </UIButton>
                     </div>
-
                     <hr className={isDarkMode ? "border-green-800" : "border-green-200"} />
-
                     {/* Mental State Display */}
                     <div className={classNames(
                         "p-4 rounded-lg border",
@@ -549,12 +318,9 @@ export default function BrainSignalVisualizer() {
                             </div>
                         </div>
                     </div>
-
                     <hr className={isDarkMode ? "border-green-800" : "border-green-200"} />
-
                     {/* Meditation Section */}
                     <div>
-                       
                         <MeditationSession
                             onStartSession={() => { isSessionActiveRef.current = true; isMeditatingRef.current = true; }}
                             onEndSession={() => { isSessionActiveRef.current = false; isMeditatingRef.current = false; }}
@@ -562,7 +328,7 @@ export default function BrainSignalVisualizer() {
                             sessionResults={sessionSummary}
                             setSessionResults={setSessionSummary}
                             connected={isDeviceConnected}
-                            setShowResults={setResultsVisible}
+                            setShowResults={setShowPlotting}
                             darkMode={isDarkMode}
                         />
                         {sessionSummary && sessionSummary.statePercentages && (
@@ -587,7 +353,6 @@ export default function BrainSignalVisualizer() {
                     </div>
                 </div>
             </div>
-
             {/* Sidebar Navigation - Mobile Off-canvas */}
             <div className={classNames(
                 "fixed inset-0 z-50 transition-transform transform md:hidden",
@@ -595,7 +360,7 @@ export default function BrainSignalVisualizer() {
             )}>
                 {/* Overlay */}
                 <div
-                    className="absolute inset-0  bg-opacity-40 backdrop-blur-sm"
+                    className="absolute inset-0 bg-opacity-40 backdrop-blur-sm"
                     onClick={() => setSidebarOpen(false)}
                 />
                 {/* Drawer */}
@@ -612,7 +377,6 @@ export default function BrainSignalVisualizer() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
-
                     {/* Logo */}
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-lg flex items-center justify-center">
@@ -623,7 +387,6 @@ export default function BrainSignalVisualizer() {
                             <p className="text-xs text-slate-500 dark:text-slate-400">v2.1.0</p>
                         </div>
                     </div>
-
                     {/* Connection Status */}
                     <div className={classNames(
                         "p-4 rounded-lg mb-6 border",
@@ -651,7 +414,6 @@ export default function BrainSignalVisualizer() {
                             />
                         </div>
                     </div>
-
                     {/* Quick Actions */}
                     <div className="space-y-3">
                         <UIButton
@@ -676,7 +438,6 @@ export default function BrainSignalVisualizer() {
                             )}
                         </UIButton>
                     </div>
-
                     {/* Mental State Display */}
                     <div className={classNames(
                         "mt-8 p-4 rounded-lg border",
@@ -685,17 +446,16 @@ export default function BrainSignalVisualizer() {
                         <div className="text-center">
                             <div className="flex items-center justify-center gap-2 mb-3">
                                 <Heart className="h-4 w-4 text-green-500" />
-                                <Brain className="h-4 w-4 text-green-700" />
+                               
                             </div>
                             <div className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">
-                                Mental State
+                                physiological State
                             </div>
                             <div className="text-lg font-bold text-green-700 dark:text-green-400">
                                 <MoodDisplay state={currentMentalState} />
                             </div>
                         </div>
                     </div>
-
                     {/* Meditation Section */}
                     <div className="mt-8">
                         <MeditationSession
@@ -705,7 +465,7 @@ export default function BrainSignalVisualizer() {
                             sessionResults={sessionSummary}
                             setSessionResults={setSessionSummary}
                             connected={isDeviceConnected}
-                            setShowResults={setResultsVisible}
+                            setShowResults={setShowPlotting}
                             darkMode={isDarkMode}
                         />
                         {sessionSummary && sessionSummary.statePercentages && (
@@ -730,7 +490,6 @@ export default function BrainSignalVisualizer() {
                     </div>
                 </div>
             </div>
-
             {/* Main Content Area */}
             <div className="flex-1 overflow-auto">
                 {/* Top Header Bar */}
@@ -770,20 +529,18 @@ export default function BrainSignalVisualizer() {
                         </div>
                     </div>
                 </div>
-
                 {/* Dashboard Content */}
                 <div className="p-4">
                     {/* Vital Signs Row */}
                     <div className="mb-2">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                             {/* Heart Rate */}
-                            <div className="p-2  flex flex-col items-center">
+                            <div className="p-2 flex flex-col items-center">
                                 <Heart className="h-6 w-6 text-green-600 mb-1" />
                                 <span className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">Heart Rate</span>
                                 <span className="text-3xl md:text-4xl font-bold text-green-700 dark:text-green-300" ref={bpmCurrentRef}>--</span>
                                 <span className="text-xs text-green-600 dark:text-green-400 mt-1">BPM</span>
                             </div>
-
                             {/* Heart Rate Variability */}
                             <div className="p-4 flex flex-col items-center">
                                 <Activity className="h-6 w-6 text-green-600 mb-2" />
@@ -791,17 +548,15 @@ export default function BrainSignalVisualizer() {
                                 <span className="text-3xl md:text-4xl font-bold text-green-700 dark:text-green-300" ref={hrvCurrentRef}>--</span>
                                 <span className="text-xs text-green-600 dark:text-green-400 mt-1">MS</span>
                             </div>
-
                             {/* Mental Load */}
-                            <div className="p-4  flex flex-col items-center">
+                            <div className="p-4 flex flex-col items-center">
                                 <GaugeIcon className="h-6 w-6 text-green-600 mb-2" />
                                 <span className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">Mental Load</span>
                                 <span className="text-3xl md:text-4xl font-bold text-green-700 dark:text-green-300">{mentalLoadIndex}</span>
                                 <span className="text-xs text-green-600 dark:text-green-400 mt-1">INDEX</span>
                             </div>
-
                             {/* Balance Score */}
-                            <div className="p-4  flex flex-col items-center">
+                            <div className="p-4 flex flex-col items-center">
                                 <BarChartIcon className="h-6 w-6 text-green-600 mb-2" />
                                 <span className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">Balance Score</span>
                                 <span className="text-3xl md:text-4xl font-bold text-green-700 dark:text-green-300">
@@ -811,7 +566,6 @@ export default function BrainSignalVisualizer() {
                             </div>
                         </div>
                     </div>
-
                     {/* Brainwave Analysis - Always Visible */}
                     <div className="mb-2">
                         <div className={classNames(
@@ -825,11 +579,9 @@ export default function BrainSignalVisualizer() {
                             </div>
                         </div>
                     </div>
-
                     {/* Signal Visualization */}
                     {showPlotting && (
                         <div>
-                          
                             <div className="space-y-6">
                                 {/* EEG Channel 1 */}
                                 <div className={classNames(
@@ -852,7 +604,6 @@ export default function BrainSignalVisualizer() {
                                         />
                                     </div>
                                 </div>
-
                                 {/* EEG Channel 2 */}
                                 <div className={classNames(
                                     "p-6 rounded-xl border",
@@ -874,7 +625,6 @@ export default function BrainSignalVisualizer() {
                                         />
                                     </div>
                                 </div>
-
                                 {/* ECG Signal */}
                                 <div className={classNames(
                                     "p-6 rounded-xl border",

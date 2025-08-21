@@ -306,24 +306,14 @@ export const MeditationSession = ({
 
                         </Card>
 
-                        {/* Connection Status */}
-                        <Card className={`border-2 ${connected ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'}`}>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-center gap-3">
-                                    <div className={`w-3 h-3 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                                    <span className="text-sm font-medium text-green-700 dark:text-green-300">
-                                        {connected ? 'Device Connected' : 'Device Disconnected'}
-                                    </span>
-                                </div>
-                            </CardContent>
-                        </Card>
-
+                     
                         {/* Start Button */}
                         <div className="flex justify-center pt-4">
                             <Button
                                 disabled={!connected}
                                 onClick={startMeditation}
                                 size="lg"
+                                style={{marginTop: '1rem'}}
                                 className="w-full max-w-xs h-14 text-lg font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                             >
                                 <Play className="mr-2 h-5 w-5" />
