@@ -8,15 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { 
-    Play, 
-    Pause, 
-    Timer, 
-    Brain, 
-    Heart, 
-    Activity, 
-    Sparkles, 
-    Moon, 
+import {
+    Play,
+    Pause,
+    Timer,
+    Brain,
+    Heart,
+    Activity,
+    Sparkles,
+    Moon,
     Sun,
     CheckCircle,
     Clock,
@@ -260,29 +260,25 @@ export const MeditationSession = ({
         <div className="h-full w-full min-h-0 overflow-hidden relative flex flex-col">
             {!isMeditating ? (
                 !sessionResults ? (
-                    // Start Session UI - Modern Design
+                    // Start Session UI - Green/White Design
                     <div className="flex-1 flex flex-col p-6 space-y-8">
                         {/* Header */}
                         <div className="text-center space-y-4">
-                            
                             <div>
-                                <h2 className="text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                <h2 className="text-sm font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                                     Ready to Meditate?
                                 </h2>
-                                <p className="text-muted-foreground mt-2">
-                                    Choose your session duration and begin your mindfulness journey
-                                </p>
                             </div>
                         </div>
 
                         {/* Duration Selection */}
-                        <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+                        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-green-50 dark:from-green-950 dark:to-green-900">
                             <CardHeader className="text-center pb-4">
-                                <CardTitle className="flex items-center justify-center gap-2 text-lg">
-                                    <Timer className="h-5 w-5 text-indigo-600" />
+                                <CardTitle className="flex items-center justify-center gap-2 text-lg text-green-700 dark:text-green-300">
+                                    <Timer className="h-5 w-5 text-green-600" />
                                     Session Duration
                                 </CardTitle>
-                                <CardDescription>
+                                <CardDescription className="text-green-600 dark:text-green-300">
                                     Select how long you'd like to meditate
                                 </CardDescription>
                             </CardHeader>
@@ -294,20 +290,20 @@ export const MeditationSession = ({
                                             onClick={() => setDuration(val)}
                                             disabled={!connected}
                                             variant={duration === val ? "default" : "outline"}
-                                            className={`h-16 text-lg font-semibold transition-all duration-300 ${
-                                                duration === val 
-                                                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg" 
-                                                    : "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-950 dark:hover:to-purple-950"
-                                            } ${!connected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            className={`h-10 text-base md:h-12 md:text-lg font-semibold transition-all duration-300 ${duration === val
+                                                    ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg"
+                                                    : "hover:bg-green-100 dark:hover:bg-green-900 text-green-700 dark:text-green-300"
+                                                } ${!connected ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
                                             <div className="flex flex-col items-center">
-                                                <span className="text-2xl font-bold">{val}</span>
+                                                <span className="text-lg md:text-2xl font-bold">{val}</span>
                                                 <span className="text-xs opacity-80">minutes</span>
                                             </div>
                                         </Button>
                                     ))}
                                 </div>
                             </CardContent>
+
                         </Card>
 
                         {/* Connection Status */}
@@ -315,7 +311,7 @@ export const MeditationSession = ({
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-center gap-3">
                                     <div className={`w-3 h-3 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                                    <span className="text-sm font-medium">
+                                    <span className="text-sm font-medium text-green-700 dark:text-green-300">
                                         {connected ? 'Device Connected' : 'Device Disconnected'}
                                     </span>
                                 </div>
@@ -328,7 +324,7 @@ export const MeditationSession = ({
                                 disabled={!connected}
                                 onClick={startMeditation}
                                 size="lg"
-                                className="w-full max-w-xs h-14 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                                className="w-full max-w-xs h-14 text-lg font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                             >
                                 <Play className="mr-2 h-5 w-5" />
                                 Begin Meditation
@@ -336,16 +332,16 @@ export const MeditationSession = ({
                         </div>
                     </div>
                 ) : (
-                    // Session Results UI - Modern Design
+                    // Session Results UI - Green/White Design
                     <div className="flex-1 flex flex-col p-6 space-y-6">
                         {/* Results Header */}
                         <div className="text-center space-y-4">
-                           
+
                             <div>
                                 <h2 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                                     Session Complete
                                 </h2>
-                                <p className="text-muted-foreground mt-2">
+                                <p className="text-green-700 dark:text-green-300 mt-2">
                                     Great job! Here's your meditation summary
                                 </p>
                             </div>
@@ -353,25 +349,25 @@ export const MeditationSession = ({
 
                         {/* Quick Stats */}
                         <div className="grid grid-cols-2 gap-4">
-                            <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950">
+                            <Card className="border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-white dark:from-green-950 dark:to-green-900">
                                 <CardContent className="p-4 text-center">
-                                    <Clock className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-                                    <p className="text-xs font-semibold uppercase tracking-wide mb-1 text-blue-600 dark:text-blue-400">
+                                    <Clock className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                                    <p className="text-xs font-semibold uppercase tracking-wide mb-1 text-green-600 dark:text-green-400">
                                         Duration
                                     </p>
-                                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                                    <p className="text-lg font-bold text-green-700 dark:text-green-300">
                                         {sessionResults.formattedDuration}
                                     </p>
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
+                            <Card className="border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-white dark:from-green-950 dark:to-green-900">
                                 <CardContent className="p-4 text-center">
-                                    <Target className="h-6 w-6 mx-auto mb-2 text-purple-600" />
-                                    <p className="text-xs font-semibold uppercase tracking-wide mb-1 text-purple-600 dark:text-purple-400">
+                                    <Target className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                                    <p className="text-xs font-semibold uppercase tracking-wide mb-1 text-green-600 dark:text-green-400">
                                         State
                                     </p>
-                                    <p className="text-lg font-bold capitalize text-purple-700 dark:text-purple-300">
+                                    <p className="text-lg font-bold capitalize text-green-700 dark:text-green-300">
                                         {sessionResults.mostFrequent}
                                     </p>
                                 </CardContent>
@@ -395,7 +391,6 @@ export const MeditationSession = ({
 
                         {/* Action Buttons */}
                         <div className="flex gap-3 pt-4">
-                            
                             <Button
                                 onClick={() => {
                                     setSessionResults(null);
@@ -403,7 +398,7 @@ export const MeditationSession = ({
                                 }}
                                 variant="outline"
                                 size="lg"
-                                className="flex-1"
+                                className="flex-1 border-green-600 text-green-700 dark:text-green-300"
                             >
                                 <Sparkles className="mr-2 h-5 w-5" />
                                 New Session
@@ -412,28 +407,28 @@ export const MeditationSession = ({
                     </div>
                 )
             ) : (
-                // Active Meditation UI - Modern Design
+                // Active Meditation UI - Green/White Design
                 <div className="flex-1 flex flex-col justify-center items-center p-6 space-y-8">
                     {/* Timer Display */}
                     <div className="relative">
                         {/* Outer Ring */}
-                        <div className="w-48 h-48 rounded-full border-4 border-slate-200 dark:border-slate-700 flex items-center justify-center relative">
+                        <div className="w-48 h-48 rounded-full border-4 border-green-200 dark:border-green-700 flex items-center justify-center relative">
                             {/* Progress Ring */}
                             <div className="absolute inset-0 rounded-full border-4 border-transparent">
-                                <div 
-                                    className="w-full h-full rounded-full border-4 border-indigo-500"
+                                <div
+                                    className="w-full h-full rounded-full border-4 border-green-500"
                                     style={{
-                                        background: `conic-gradient(from 0deg, #3b82f6 ${progressPercentage * 3.6}deg, transparent ${progressPercentage * 3.6}deg)`
+                                        background: `conic-gradient(from 0deg, #22c55e ${progressPercentage * 3.6}deg, transparent ${progressPercentage * 3.6}deg)`
                                     }}
                                 />
                             </div>
-                            
+
                             {/* Timer Text */}
                             <div className="text-center z-10">
-                                <div className="text-4xl font-bold font-mono text-slate-800 dark:text-slate-200">
+                                <div className="text-4xl font-bold font-mono text-green-700 dark:text-green-200">
                                     {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                                 </div>
-                                <div className="text-sm text-muted-foreground mt-1">
+                                <div className="text-sm text-green-600 dark:text-green-300 mt-1">
                                     remaining
                                 </div>
                             </div>
@@ -449,8 +444,8 @@ export const MeditationSession = ({
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Brain className="h-4 w-4 text-indigo-600" />
-                            <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                            <Brain className="h-4 w-4 text-green-600" />
+                            <span className="text-sm font-medium text-green-600 dark:text-green-400">
                                 Brain Activity
                             </span>
                         </div>
@@ -461,7 +456,7 @@ export const MeditationSession = ({
                         onClick={stopMeditation}
                         size="lg"
                         variant="destructive"
-                        className="px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                        className="px-8 py-3 text-lg font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                     >
                         <Pause className="mr-2 h-5 w-5" />
                         End Session

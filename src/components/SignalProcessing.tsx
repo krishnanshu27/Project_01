@@ -423,7 +423,7 @@ export default function BrainSignalVisualizer() {
         // Clamp value to 0-100 for percent
         const percent = Math.round(Math.max(0, Math.min(100, value * 100)));
         return (
-            <UICard className="flex flex-col items-center justify-center p-2 w-24 h-28 shadow">
+            <UICard className="flex flex-col items-center justify-center p-2 w-24 h-24 shadow">
                 <div className="relative flex items-center justify-center w-12 h-12 mb-1">
                     <svg width="48" height="48">
                         <circle
@@ -474,31 +474,34 @@ export default function BrainSignalVisualizer() {
             {/* Sidebar Navigation - Desktop */}
             <div className={classNames(
                 "w-64 flex-shrink-0 border-r hidden md:block",
-                isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
+                isDarkMode ? "bg-green-900 border-green-800" : "bg-white border-green-200"
             )}>
-                <div className="p-6">
+                <div className="p-6 flex flex-col gap-6">
+
                     {/* Logo */}
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-lg flex items-center justify-center">
                             <Brain className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-slate-900 dark:text-white">NeuralFlow</h1>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">v2.1.0</p>
+                            <h1 className="text-xl font-bold text-green-900 dark:text-white">NeuralFlow</h1>
+                            <p className="text-xs text-green-400 dark:text-green-300">v2.1.0</p>
                         </div>
                     </div>
 
+                    <hr className={isDarkMode ? "border-green-800" : "border-green-200"} />
+
                     {/* Connection Status */}
                     <div className={classNames(
-                        "p-4 rounded-lg mb-6 border",
-                        isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-200"
+                        "p-4 rounded-lg border",
+                        isDarkMode ? "bg-green-900 border-green-800" : "bg-green-50 border-green-200"
                     )}>
                         <div className="flex items-center gap-3 mb-2">
                             <div className={classNames(
                                 "h-2 w-2 rounded-full",
                                 isDeviceConnected ? "bg-green-400 animate-pulse" : "bg-red-400"
                             )} />
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <span className="text-sm font-semibold text-green-700 dark:text-green-300">
                                 Device Status
                             </span>
                         </div>
@@ -508,18 +511,17 @@ export default function BrainSignalVisualizer() {
                         )}>
                             {isDeviceConnected ? "Connected" : "Disconnected"}
                         </div>
-                       
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="space-y-3">
+                    <div>
                         <UIButton
                             onClick={isDeviceConnected ? disconnectDevice : connectDevice}
                             className={classNames(
-                                "w-full justify-start px-4 py-3 text-sm font-medium text-white rounded-lg",
+                                "w-full justify-start px-4 py-3 text-sm font-semibold rounded-lg transition-colors duration-200",
                                 isDeviceConnected
-                                    ? "bg-red-600 hover:bg-red-700"
-                                    : "bg-blue-600 hover:bg-blue-700"
+                                    ? "bg-red-600 hover:bg-red-700 text-white"
+                                    : "bg-green-600 hover:bg-green-700 text-white"
                             )}
                         >
                             {isDeviceConnected ? (
@@ -534,35 +536,34 @@ export default function BrainSignalVisualizer() {
                                 </>
                             )}
                         </UIButton>
-
-                       
                     </div>
+
+                    <hr className={isDarkMode ? "border-green-800" : "border-green-200"} />
 
                     {/* Mental State Display */}
                     <div className={classNames(
-                        "mt-8 p-4 rounded-lg border",
-                        isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-200"
+                        "p-4 rounded-lg border",
+                        isDarkMode ? "bg-green-900 border-green-800" : "bg-green-50 border-green-200"
                     )}>
                         <div className="text-center">
                             <div className="flex items-center justify-center gap-2 mb-3">
-                                <Heart className="h-4 w-4 text-red-400" />
-                                <Brain className="h-4 w-4 text-blue-400" />
+                                <Heart className="h-4 w-4 text-green-500" />
+                                <Brain className="h-4 w-4 text-green-700" />
                             </div>
-                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            <div className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">
                                 Mental State
                             </div>
-                            <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                            <div className="text-lg font-bold text-green-700 dark:text-green-400">
                                 <MoodDisplay state={currentMentalState} />
                             </div>
                         </div>
                     </div>
 
-                    {/* Meditation Session Option in Sidebar */}
-                    <div className="mt-8">
-                        <div className="mb-2 flex items-center gap-2">
-                           
-                            <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Meditation</span>
-                        </div>
+                    <hr className={isDarkMode ? "border-green-800" : "border-green-200"} />
+
+                    {/* Meditation Section */}
+                    <div>
+                       
                         <MeditationSession
                             onStartSession={() => { isSessionActiveRef.current = true; isMeditatingRef.current = true; }}
                             onEndSession={() => { isSessionActiveRef.current = false; isMeditatingRef.current = false; }}
@@ -573,22 +574,21 @@ export default function BrainSignalVisualizer() {
                             setShowResults={setResultsVisible}
                             darkMode={isDarkMode}
                         />
-                        {/* Show results after session */}
                         {sessionSummary && sessionSummary.statePercentages && (
-                            <div className="mt-4 p-3 rounded-lg border bg-indigo-50 dark:bg-indigo-900 border-indigo-200 dark:border-indigo-700">
-                                <div className="font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Session Results</div>
+                            <div className="mt-4 p-3 rounded-lg border bg-green-50 dark:bg-green-900 border-green-200 dark:border-green-700">
+                                <div className="font-semibold text-green-700 dark:text-green-300 mb-2">Session Results</div>
                                 <div className="space-y-1 text-sm">
                                     <div>
-                                        <span className="font-medium">Relaxed:</span> {sessionSummary.statePercentages.Relaxed}%
+                                        <span className="font-medium">Relaxed:</span> <span className="text-green-700 dark:text-green-300">{sessionSummary.statePercentages.Relaxed}%</span>
                                     </div>
                                     <div>
-                                        <span className="font-medium">Focused:</span> {sessionSummary.statePercentages.Focused}%
+                                        <span className="font-medium">Focused:</span> <span className="text-green-700 dark:text-green-300">{sessionSummary.statePercentages.Focused}%</span>
                                     </div>
                                     <div>
-                                        <span className="font-medium">Meditative:</span> {sessionSummary.statePercentages["Meditation"]}%
+                                        <span className="font-medium">Meditative:</span> <span className="text-green-700 dark:text-green-300">{sessionSummary.statePercentages["Meditation"]}%</span>
                                     </div>
                                     <div>
-                                        <span className="font-medium">Drowsy:</span> {sessionSummary.statePercentages.Drowsy}%
+                                        <span className="font-medium">Drowsy:</span> <span className="text-green-700 dark:text-green-300">{sessionSummary.statePercentages.Drowsy}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -624,7 +624,7 @@ export default function BrainSignalVisualizer() {
 
                     {/* Logo */}
                     <div className="flex items-center gap-3 mb-8">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-lg flex items-center justify-center">
                             <Brain className="h-6 w-6 text-white" />
                         </div>
                         <div>
@@ -636,14 +636,14 @@ export default function BrainSignalVisualizer() {
                     {/* Connection Status */}
                     <div className={classNames(
                         "p-4 rounded-lg mb-6 border",
-                        isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-200"
+                        isDarkMode ? "bg-green-900 border-green-800" : "bg-green-50 border-green-200"
                     )}>
                         <div className="flex items-center gap-3 mb-2">
                             <div className={classNames(
                                 "h-2 w-2 rounded-full",
                                 isDeviceConnected ? "bg-green-400 animate-pulse" : "bg-red-400"
                             )} />
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <span className="text-sm font-semibold text-green-700 dark:text-green-300">
                                 Device Status
                             </span>
                         </div>
@@ -666,10 +666,10 @@ export default function BrainSignalVisualizer() {
                         <UIButton
                             onClick={isDeviceConnected ? disconnectDevice : connectDevice}
                             className={classNames(
-                                "w-full justify-start px-4 py-3 text-sm font-medium text-white rounded-lg",
+                                "w-full justify-start px-4 py-3 text-sm font-semibold rounded-lg transition-colors duration-200",
                                 isDeviceConnected
-                                    ? "bg-red-600 hover:bg-red-700"
-                                    : "bg-blue-600 hover:bg-blue-700"
+                                    ? "bg-red-600 hover:bg-red-700 text-white"
+                                    : "bg-green-600 hover:bg-green-700 text-white"
                             )}
                         >
                             {isDeviceConnected ? (
@@ -689,59 +689,23 @@ export default function BrainSignalVisualizer() {
                     {/* Mental State Display */}
                     <div className={classNames(
                         "mt-8 p-4 rounded-lg border",
-                        isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-200"
+                        isDarkMode ? "bg-green-900 border-green-800" : "bg-green-50 border-green-200"
                     )}>
                         <div className="text-center">
                             <div className="flex items-center justify-center gap-2 mb-3">
-                                <Heart className="h-4 w-4 text-red-400" />
-                                <Brain className="h-4 w-4 text-blue-400" />
+                                <Heart className="h-4 w-4 text-green-500" />
+                                <Brain className="h-4 w-4 text-green-700" />
                             </div>
-                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            <div className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">
                                 Mental State
                             </div>
-                            <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                            <div className="text-lg font-bold text-green-700 dark:text-green-400">
                                 <MoodDisplay state={currentMentalState} />
                             </div>
                         </div>
                     </div>
 
-                    {/* Meditation Session Option in Sidebar */}
-                    <div className="mt-8">
-                        <div className="mb-2 flex items-center gap-2">
-                            <BrainIcon className="h-4 w-4 text-indigo-500" />
-                            <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Meditation</span>
-                        </div>
-                        <MeditationSession
-                            onStartSession={() => { isSessionActiveRef.current = true; isMeditatingRef.current = true; }}
-                            onEndSession={() => { isSessionActiveRef.current = false; isMeditatingRef.current = false; }}
-                            sessionData={sessionDataRef.current}
-                            sessionResults={sessionSummary}
-                            setSessionResults={setSessionSummary}
-                            connected={isDeviceConnected}
-                            setShowResults={setResultsVisible}
-                            darkMode={isDarkMode}
-                        />
-                        {/* Show results after session */}
-                        {sessionSummary && sessionSummary.statePercentages && (
-                            <div className="mt-4 p-3 rounded-lg border bg-indigo-50 dark:bg-indigo-900 border-indigo-200 dark:border-indigo-700">
-                                <div className="font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Session Results</div>
-                                <div className="space-y-1 text-sm">
-                                    <div>
-                                        <span className="font-medium">Relaxed:</span> {sessionSummary.statePercentages.Relaxed}%
-                                    </div>
-                                    <div>
-                                        <span className="font-medium">Focused:</span> {sessionSummary.statePercentages.Focused}%
-                                    </div>
-                                    <div>
-                                        <span className="font-medium">Meditative:</span> {sessionSummary.statePercentages["Meditation"]}%
-                                    </div>
-                                    <div>
-                                        <span className="font-medium">Drowsy:</span> {sessionSummary.statePercentages.Drowsy}%
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                   
                 </div>
             </div>
 
@@ -776,82 +740,50 @@ export default function BrainSignalVisualizer() {
                 </div>
 
                 {/* Dashboard Content */}
-                <div className="p-8">
+                <div className="p-4">
                     {/* Vital Signs Row */}
-                    <div className="mb-8">
-                        <div className="flex gap-8 mb-16">
+                    <div className="mb-2">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                             {/* Heart Rate */}
-                            <div className="flex-1">
-                                <div className="flex items-baseline gap-2 mb-2">
-                                    <Heart className={classNames(
-                                        "h-5 w-5",
-                                        heartbeatActive ? "text-red-500" : "text-red-400"
-                                    )} />
-                                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Heart Rate</span>
-                                </div>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-4xl font-bold text-red-600 dark:text-red-400" ref={bpmCurrentRef}>--</span>
-                                    <span className="text-lg text-slate-500 dark:text-slate-400">BPM</span>
-                                </div>
-                                <div className="h-1 bg-gray-200 dark:bg-slate-700 rounded-full mt-2">
-                                    <div className="h-1 bg-red-500 rounded-full" style={{ width: '65%' }}></div>
-                                </div>
+                            <div className="p-2  flex flex-col items-center">
+                                <Heart className="h-6 w-6 text-green-600 mb-1" />
+                                <span className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">Heart Rate</span>
+                                <span className="text-3xl md:text-4xl font-bold text-green-700 dark:text-green-300" ref={bpmCurrentRef}>--</span>
+                                <span className="text-xs text-green-600 dark:text-green-400 mt-1">BPM</span>
                             </div>
 
-                            {/* HRV */}
-                            <div className="flex-1">
-                                <div className="flex items-baseline gap-2 mb-2">
-                                    <Activity className="h-5 w-5 text-blue-500" />
-                                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Heart Rate Variability</span>
-                                </div>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-4xl font-bold text-blue-600 dark:text-blue-400" ref={hrvCurrentRef}>--</span>
-                                    <span className="text-lg text-slate-500 dark:text-slate-400">MS</span>
-                                </div>
-                                <div className="h-1 bg-gray-200 dark:bg-slate-700 rounded-full mt-2">
-                                    <div className="h-1 bg-blue-500 rounded-full" style={{ width: '45%' }}></div>
-                                </div>
+                            {/* Heart Rate Variability */}
+                            <div className="p-4 flex flex-col items-center">
+                                <Activity className="h-6 w-6 text-green-600 mb-2" />
+                                <span className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">Heart Rate Variability</span>
+                                <span className="text-3xl md:text-4xl font-bold text-green-700 dark:text-green-300" ref={hrvCurrentRef}>--</span>
+                                <span className="text-xs text-green-600 dark:text-green-400 mt-1">MS</span>
                             </div>
 
                             {/* Mental Load */}
-                            <div className="flex-1">
-                                <div className="flex items-baseline gap-2 mb-2">
-                                    <GaugeIcon className="h-5 w-5 text-orange-500" />
-                                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Mental Load</span>
-                                </div>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-4xl font-bold text-orange-600 dark:text-orange-400">{mentalLoadIndex}</span>
-                                    <span className="text-lg text-slate-500 dark:text-slate-400">INDEX</span>
-                                </div>
-                                <div className="h-1 bg-gray-200 dark:bg-slate-700 rounded-full mt-2">
-                                    <div className="h-1 bg-orange-500 rounded-full" style={{ width: '75%' }}></div>
-                                </div>
+                            <div className="p-4  flex flex-col items-center">
+                                <GaugeIcon className="h-6 w-6 text-green-600 mb-2" />
+                                <span className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">Mental Load</span>
+                                <span className="text-3xl md:text-4xl font-bold text-green-700 dark:text-green-300">{mentalLoadIndex}</span>
+                                <span className="text-xs text-green-600 dark:text-green-400 mt-1">INDEX</span>
                             </div>
 
                             {/* Balance Score */}
-                            <div className="flex-1">
-                                <div className="flex items-baseline gap-2 mb-2">
-                                    <BarChartIcon className="h-5 w-5 text-green-500" />
-                                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Balance Score</span>
-                                </div>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-4xl font-bold text-green-600 dark:text-green-400">
-                                        {mindBodyBalance !== null ? `${mindBodyBalance}` : "--"}
+                            <div className="p-4  flex flex-col items-center">
+                                <BarChartIcon className="h-6 w-6 text-green-600 mb-2" />
+                                <span className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">Balance Score</span>
+                                <span className="text-3xl md:text-4xl font-bold text-green-700 dark:text-green-300">
+                                    {mindBodyBalance !== null ? `${mindBodyBalance}` : "--"}
                                 </span>
-                                    <span className="text-lg text-slate-500 dark:text-slate-400">SCORE</span>
-                                </div>
-                                <div className="h-1 bg-gray-200 dark:bg-slate-700 rounded-full mt-2">
-                                    <div className="h-1 bg-green-500 rounded-full" style={{ width: '60%' }}></div>
-                                </div>
+                                <span className="text-xs text-green-600 dark:text-green-400 mt-1">SCORE</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Brainwave Analysis */}
-                    <div className="mb-8 ">
-                       
+                    {/* Brainwave Analysis - Always Visible */}
+                    <div className="mb-2">
                         <div className={classNames(
-                            "p-6 rounded-xl border",
+                            "p-4 rounded-xl border",
                             isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
                         )}>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 justify-items-center">
