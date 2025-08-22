@@ -1,4 +1,4 @@
-import { FFT } from '@/lib/fft';
+import { FFT } from '@/lib/FastFourierTransform';
 
 // Frequency band definitions (Hz)
 const BANDS: Record<string, [number, number]> = {

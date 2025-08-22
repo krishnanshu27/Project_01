@@ -1,6 +1,5 @@
 "use client";
 import { useState as useLocalState, useRef as useLocalRef, useCallback as useLocalCallback, useEffect as useLocalEffect } from "react";
-import { useMotionValue as useLocalMotionValue } from "framer-motion";
 import { Button as UIButton } from "@/components/ui/button";
 import { cn as classNames } from "@/lib/utils";
 import {
@@ -8,13 +7,12 @@ import {
     Gauge as GaugeIcon, BarChart3 as BarChartIcon, Waves, Brain, Heart, Activity, Clock, Target, Plug, PlugZap
 } from 'lucide-react';
 import { Card as UICard } from '@/components/ui/card';
-import { useBluetoothDataStream as useBluetoothStream } from './Bledata';
-import WebglPlotCanvas from './WebglPlotCanvas';
-import { WebglPlotCanvasHandle as PlotCanvasHandle } from "./WebglPlotCanvas";
-import { MoodDisplay, EmotionalState } from "./StateIndicator";
-import { predictState as predictMentalState } from "@/lib/stateClassifier";
+import { useBluetoothDataStream as useBluetoothStream } from './BluetoothData';
+import WebglPlotCanvas from './Plot';
+import { WebglPlotCanvasHandle as PlotCanvasHandle } from "./Plot";
+import { MoodDisplay, EmotionalState } from "./PhysicalState";
 import StreamingDuration from "./StreamingDuration";
-import { MeditationSession } from "@/components/MeditationSession";
+import { MeditationSession } from "@/components/Session";
 
 export default function BrainSignalVisualizer() {
     const [isDarkMode, setIsDarkMode] = useLocalState(false);
@@ -94,7 +92,7 @@ export default function BrainSignalVisualizer() {
 
     useLocalEffect(() => {
         const worker = new Worker(
-            new URL("../webworker/dataProcessor.worker.ts", import.meta.url),
+            new URL("../webworker/devicedata.worker.ts", import.meta.url),
             { type: "module" }
         );
         worker.onmessage = (e) => {
@@ -112,7 +110,7 @@ export default function BrainSignalVisualizer() {
 
     useLocalEffect(() => {
         const w = new Worker(
-            new URL("../webworker/bandPower.worker.ts", import.meta.url),
+            new URL("../webworker/brainwavedata.worker.ts", import.meta.url),
             { type: "module" }
         );
 
