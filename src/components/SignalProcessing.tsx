@@ -1,5 +1,5 @@
 "use client";
-import { useState as useLocalState, useRef as useLocalRef, useCallback as useLocalCallback, useEffect as useLocalEffect } from "react";
+import { useState as useLocalState, useRef as useLocalRef, useCallback as useLocalCallback, useEffect as useLocalEffect, useEffect } from "react";
 import { Button as UIButton } from "@/components/ui/button";
 import { cn as classNames } from "@/lib/utils";
 import {
@@ -21,10 +21,12 @@ export default function BrainSignalVisualizer() {
     const ecgCanvasRef = useLocalRef<PlotCanvasHandle>(null);
     const eeg0BufferRef = useLocalRef<number[]>([]);
     const eeg1BufferRef = useLocalRef<number[]>([]);
+    const ecgBufferRef = useLocalRef<number[]>([]);
     const radarCh0DataRef = useLocalRef<{ subject: string; value: number }[]>([]);
     const radarCh1DataRef = useLocalRef<{ subject: string; value: number }[]>([]);
     const bandWorkerRef = useLocalRef<Worker | null>(null);
     const dataWorkerRef = useLocalRef<Worker | null>(null);
+    const heartWaveWorkerRef = useLocalRef<Worker | null>(null);
     const [heartbeatActive, setHeartbeatActive] = useLocalState(false);
     const [currentMentalState, setCurrentMentalState] = useLocalState<EmotionalState>("no_data");
     const stateHistoryRef = useLocalRef<{ state: EmotionalState; timestamp: number }[]>([]);
@@ -86,6 +88,22 @@ export default function BrainSignalVisualizer() {
                 raw2: data[3],
             },
         });
+
+        // Buffer ECG samples
+        ecgBufferRef.current.push(data[3]);
+        // Keep last 5 seconds of data (e.g., 2500 samples at 500Hz)
+        if (ecgBufferRef.current.length > SAMPLES_PER_SECOND * 5) {
+            ecgBufferRef.current.shift();
+        }
+
+        // Send buffer to heartwave worker every 500ms
+        if (ecgBufferRef.current.length >= SAMPLES_PER_SECOND) {
+            heartWaveWorkerRef.current?.postMessage({
+                ecgBuffer: [...ecgBufferRef.current],
+                sampleRate: SAMPLES_PER_SECOND
+            });
+            ecgBufferRef.current.length = 0; // Clear buffer after sending
+        }
     }, []);
 
     const { connected: isDeviceConnected, connect: connectDevice, disconnect: disconnectDevice } = useBluetoothStream(handleDataStream);
@@ -97,11 +115,27 @@ export default function BrainSignalVisualizer() {
         );
         worker.onmessage = (e) => {
             if (e.data.type === "processedData") {
-                const { counter, eeg0, eeg1, ecg } = e.data.data;
+                const { counter, eeg0, eeg1, ecg, bpm, hrv, mentalLoad, balanceScore } = e.data.data;
                 eeg1CanvasRef.current?.updateData([counter, eeg0, 1]);
                 eeg2CanvasRef.current?.updateData([counter, eeg1, 2]);
                 ecgCanvasRef.current?.updateData([counter, ecg, 3]);
                 handleNewSample(eeg0, eeg1);
+
+                // Update heart rate and HRV display
+                if (bpmCurrentRef.current && bpm !== undefined) {
+                    bpmCurrentRef.current.textContent = `${Math.round(bpm)}`;
+                }
+                if (hrvCurrentRef.current && hrv !== undefined) {
+                    hrvCurrentRef.current.textContent = `${Math.round(hrv)}`;
+                }
+
+                // Update Mental Load and Balance Score
+                if (mentalLoad !== undefined) {
+                    setMentalLoadIndex(mentalLoad);
+                }
+                if (balanceScore !== undefined) {
+                    setMindBodyBalance(balanceScore);
+                }
             }
         };
         dataWorkerRef.current = worker;
@@ -176,6 +210,62 @@ export default function BrainSignalVisualizer() {
             });
         }
     }, []);
+    useEffect(() => {
+        const worker = new Worker(
+            new URL("../webworker/heartwave.worker.ts", import.meta.url),
+            { type: "module" }
+        );
+
+        const bpmWindow: number[] = [];
+        const windowSize = 5;
+        let displayedBPM: number | null = null;
+        const maxChange = 2;
+
+        worker.onmessage = (
+            e: MessageEvent<{
+                bpm: number | null;
+                high: number | null;
+                low: number | null;
+                avg: number | null;
+                peaks: number[];
+                hrv: number | null;
+                hrvHigh: number | null;
+                hrvLow: number | null;
+                hrvAvg: number | null;
+                sdnn: number;
+                rmssd: number;
+                pnn50: number;
+            }>
+        ) => {
+            const { bpm, hrv } = e.data;
+
+            // Update BPM values
+            if (bpm !== null) {
+                bpmWindow.push(bpm);
+                if (bpmWindow.length > windowSize) bpmWindow.shift();
+                const avgBPM = bpmWindow.reduce((a, b) => a + b, 0) / bpmWindow.length;
+                if (displayedBPM === null) displayedBPM = avgBPM;
+                else {
+                    const diff = avgBPM - displayedBPM;
+                    displayedBPM += Math.sign(diff) * Math.min(Math.abs(diff), maxChange);
+                }
+                if (bpmCurrentRef.current) bpmCurrentRef.current.textContent = `${Math.round(displayedBPM)}`;
+            } else {
+                bpmWindow.length = 0;
+                displayedBPM = null;
+                if (bpmCurrentRef.current) bpmCurrentRef.current.textContent = "--";
+            }
+
+            // Update HRV values
+            if (hrvCurrentRef.current) hrvCurrentRef.current.textContent = hrv !== null ? `${Math.round(hrv)}` : "--";
+        };
+
+    heartWaveWorkerRef.current = worker;
+
+    return () => {
+        worker.terminate();
+    };
+}, []);
 
     useLocalEffect(() => {
         isSessionActiveRef.current = dashboardMode === "meditation";
@@ -239,10 +329,12 @@ export default function BrainSignalVisualizer() {
             <div className={classNames(
                 "w-64 flex-shrink-0 border-r hidden md:block",
                 isDarkMode ? "bg-green-900 border-green-800" : "bg-white border-green-200"
-            )}>
-                <div className="p-6 flex flex-col gap-6">
+            )}
+            style={{ minHeight: "100vh" }}
+            >
+                <div className="p-8 flex flex-col gap-8">
                     {/* Logo */}
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-4">
                         <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-lg flex items-center justify-center">
                             <Brain className="h-6 w-6 text-white" />
                         </div>
@@ -254,10 +346,10 @@ export default function BrainSignalVisualizer() {
                     <hr className={isDarkMode ? "border-green-800" : "border-green-200"} />
                     {/* Connection Status */}
                     <div className={classNames(
-                        "p-4 rounded-lg border",
+                        "p-4 rounded-lg mb-6 border flex flex-col items-center justify-center text-center",
                         isDarkMode ? "bg-green-900 border-green-800" : "bg-green-50 border-green-200"
                     )}>
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-2 justify-center">
                             <div className={classNames(
                                 "h-2 w-2 rounded-full",
                                 isDeviceConnected ? "bg-green-400 animate-pulse" : "bg-red-400"
@@ -272,13 +364,19 @@ export default function BrainSignalVisualizer() {
                         )}>
                             {isDeviceConnected ? "Connected" : "Disconnected"}
                         </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <StreamingDuration 
+                                startTime={connectionStartTimeRef.current ?? Date.now()} 
+                                isLive={isDeviceConnected} 
+                            />
+                        </div>
                     </div>
                     {/* Quick Actions */}
-                    <div>
+                    <div className="mb-4">
                         <UIButton
                             onClick={isDeviceConnected ? disconnectDevice : connectDevice}
                             className={classNames(
-                                "w-full justify-start px-4 py-3 text-sm font-semibold rounded-lg transition-colors duration-200",
+                                "w-full flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-lg transition-colors duration-200",
                                 isDeviceConnected
                                     ? "bg-red-600 hover:bg-red-700 text-white"
                                     : "bg-green-600 hover:bg-green-700 text-white"
@@ -300,7 +398,7 @@ export default function BrainSignalVisualizer() {
                     <hr className={isDarkMode ? "border-green-800" : "border-green-200"} />
                     {/* Mental State Display */}
                     <div className={classNames(
-                        "p-4 rounded-lg border",
+                        "p-5 rounded-lg border mb-4",
                         isDarkMode ? "bg-green-900 border-green-800" : "bg-green-50 border-green-200"
                     )}>
                         <div className="text-center">
@@ -387,10 +485,10 @@ export default function BrainSignalVisualizer() {
                     </div>
                     {/* Connection Status */}
                     <div className={classNames(
-                        "p-4 rounded-lg mb-6 border",
+                        "p-4 rounded-lg mb-6 border flex flex-col items-center justify-center text-center",
                         isDarkMode ? "bg-green-900 border-green-800" : "bg-green-50 border-green-200"
                     )}>
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-2 justify-center">
                             <div className={classNames(
                                 "h-2 w-2 rounded-full",
                                 isDeviceConnected ? "bg-green-400 animate-pulse" : "bg-red-400"
@@ -417,7 +515,7 @@ export default function BrainSignalVisualizer() {
                         <UIButton
                             onClick={isDeviceConnected ? disconnectDevice : connectDevice}
                             className={classNames(
-                                "w-full justify-start px-4 py-3 text-sm font-semibold rounded-lg transition-colors duration-200",
+                                "w-full flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-lg transition-colors duration-200",
                                 isDeviceConnected
                                     ? "bg-red-600 hover:bg-red-700 text-white"
                                     : "bg-green-600 hover:bg-green-700 text-white"
@@ -516,9 +614,9 @@ export default function BrainSignalVisualizer() {
                         </p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <div className="text-right">
-                            <div className="text-sm text-slate-500 dark:text-slate-400">Session Time</div>
-                            <div className="text-lg font-mono font-bold text-slate-700 dark:text-slate-300">
+                        <div className="flex flex-col items-center justify-center min-w-[100px]">
+                            <div className="text-sm text-slate-500 dark:text-slate-400 text-center">Session Time</div>
+                            <div className="text-lg font-mono font-bold text-slate-700 dark:text-slate-300 text-center">
                                 <StreamingDuration 
                                     startTime={connectionStartTimeRef.current ?? Date.now()} 
                                     isLive={isDeviceConnected} 
@@ -591,7 +689,7 @@ export default function BrainSignalVisualizer() {
                                             <div className="w-3 h-3 rounded-full bg-green-500"></div>
                                             <h4 className="text-lg font-medium text-slate-900 dark:text-white">EEG Channel 1</h4>
                                         </div>
-                                        <div className="text-sm text-slate-500 dark:text-slate-400">256 Hz</div>
+                                      
                                     </div>
                                     <div className="h-32 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-700">
                                         <WebglPlotCanvas
@@ -612,7 +710,7 @@ export default function BrainSignalVisualizer() {
                                             <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                                             <h4 className="text-lg font-medium text-slate-900 dark:text-white">EEG Channel 2</h4>
                                         </div>
-                                        <div className="text-sm text-slate-500 dark:text-slate-400">256 Hz</div>
+                                      
                                     </div>
                                     <div className="h-32 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-700">
                                         <WebglPlotCanvas
@@ -633,7 +731,7 @@ export default function BrainSignalVisualizer() {
                                             <div className="w-3 h-3 rounded-full bg-red-500"></div>
                                             <h4 className="text-lg font-medium text-slate-900 dark:text-white">ECG Signal</h4>
                                         </div>
-                                        <div className="text-sm text-slate-500 dark:text-slate-400">500 Hz</div>
+                                       
                                     </div>
                                     <div className="h-32 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-700">
                                         <WebglPlotCanvas
